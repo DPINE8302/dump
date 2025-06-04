@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Wargame Planner</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet.draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; background-color: #f0f0f0; }
+        #app-container { display: flex; height: 100%; }
+        
+        #left-panel {
+            width: 200px;
+            background-color: #e9e9e9;
+            padding: 10px;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+        #left-panel h3 { margin-top: 0; font-size: 1.1em; }
+        .panel-section { margin-bottom: 15px; border: 1px solid #ddd; padding: 8px; border-radius: 4px; background-color: #fff;}
+        .panel-section button, .panel-section select { width: 100%; padding: 8px; margin-bottom: 5px; box-sizing: border-box; }
+        
+        .unit-palette-item {
+            padding: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+            cursor: grab;
+            text-align: center;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .unit-palette-item:hover { background-color: #e0e0e0; }
+
+        #map-container { flex-grow: 1; height: 100%; }
+        
+        #right-panel {
+            width: 250px;
+            background-color: #e9e9e9;
+            padding: 10px;
+            border-left: 1px solid #ccc;
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+        }
+        #right-panel h3 { margin-top: 0; }
+        #right-panel label { display: block; margin-top: 10px; font-size: 0.9em; }
+        #right-panel input[type="text"], #right-panel textarea { width: calc(100% - 16px); padding: 6px; margin-top: 3px; border: 1px solid #ccc; border-radius: 3px; }
+        #right-panel textarea { min-height: 60px; }
+        #right-panel button { margin-top: 10px; padding: 8px; }
+
+        /* Leaflet Draw Customizations */
+        .leaflet-draw-toolbar a { background-color: #fff !important; border: 1px solid #ccc !important; }
+        .leaflet-draw-actions li a { background-color: #f4f4f4 !important; }
+        
+        /* Team-specific styling */
+        .blue-team-el { border-left: 4px solid blue !important; }
+        .red-team-el { border-left: 4px solid red !important; }
+        .blue-team-map-icon { background-color: rgba(0, 0, 255, 0.7) !important; border-color: blue !important; }
+        .red-team-map-icon { background-color: rgba(255, 0, 0, 0.7) !important; border-color: red !important; }
+        .blue-team-path { color: blue !important; }
+        .red-team-path { color: red !important; }
+
+        .selected-map-element { box-shadow: 0 0 0 2px yellow !important; } /* For units */
+        path.selected-map-element { stroke: yellow !important; stroke-width: 5px !important; } /* For paths/shapes */
+
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="left-panel">
+            <div class="panel-section">
+                <h3>Session</h3>
+                <button onclick="app.saveSession()">Save Session</button>
+                <input type="file" id="loadSessionFile" accept=".json" style="display: none;" onchange="app.handleFileLoad(event)">
+                <button onclick="document.getElementById('loadSessionFile').click()">Load Session</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>Team Control</h3>
+                <select id="teamSelector" onchange="app.toggleTeam(this.value)">
+                    <option value="blue">Blue Team</option>
+                    <option value="red">Red Team</option>
+                </select>
+                 <button onclick="app.toggleUnitVisibility()">Toggle Other Team Visibility</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>Add Units</h3>
+                <p style="font-size:0.8em;">Drag to map:</p>
+                <div class="unit-palette-item" draggable="true" data-unit-type="infantry">Infantry (I)</div>
+                <div class="unit-palette-item" draggable="true" data-unit-type="tank">Tank (T)</div>
+                <div class="unit-palette-item" draggable="true" data-unit-type="artillery">Artillery (A)</div>
+                <div class="unit-palette-item" draggable="true" data-unit-type="recon">Recon (R)</div>
+            </div>
+            
+            <div class="panel-section">
+                <h3>Map Tools</h3>
+                <p style="font-size:0.8em;">Use map toolbar (top-left) to draw paths, markers, zones. Click existing elements to edit.</p>
+            </div>
+        </div>
+
+        <div id="map-container"></div>
+
+        <div id="right-panel">
+            <h3>Selected Element</h3>
+            <input type="hidden" id="selectedElementId">
+            <input type="hidden" id="selectedElementType">
+            
+            <div>
+                <label for="elementName">Name/Label:</label>
+                <input type="text" id="elementName">
+            </div>
+            <div>
+                <label for="elementNotes">Notes:</label>
+                <textarea id="elementNotes"></textarea>
+            </div>
+            <button onclick="app.updateSelectedElement()">Save Changes</button>
+            <button onclick="app.deleteSelectedElement()" style="background-color: #dc3545; color: white;">Delete Element</button>
+            <button onclick="app.deselectElement()">Close Panel</button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet.draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+    const app = (function() {
+        let map;
+        let drawnItems; // For Leaflet.draw items
+        let unitsLayer; // For unit markers
+        
+        let allMapElements = {}; // Stores units and drawn features { id: {data, layer} }
+        let elementIdCounter = 0;
+        let currentTeam = 'blue';
+        let otherTeamVisible = true;
+        let selectedMapElement = null; // { id, type, layer }
+
+        const unitIcons = {
+            infantry: L.divIcon({className: 'custom-div-icon', html: "<div style='background-color:grey;color:white;border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;font-size:12px;border:1px solid black;'>I</div>", iconSize: [20, 20], iconAnchor: [10,10]}),
+            tank: L.divIcon({className: 'custom-div-icon', html: "<div style='background-color:darkgreen;color:white;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:14px;border:1px solid black;'>T</div>", iconSize: [24, 24], iconAnchor: [12,12]}),
+            artillery: L.divIcon({className: 'custom-div-icon', html: "<div style='background-color:darkred;color:white;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:13px;border:1px solid black;'>A</div>", iconSize: [22, 22], iconAnchor: [11,11]}),
+            recon: L.divIcon({className: 'custom-div-icon', html: "<div style='background-color:orange;color:black;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;font-size:11px;border:1px solid black;'>R</div>", iconSize: [18, 18], iconAnchor: [9,9]})
+        };
+        
+        // UI Elements
+        const rightPanel = document.getElementById('right-panel');
+        const elementNameInput = document.getElementById('elementName');
+        const elementNotesInput = document.getElementById('elementNotes');
+        const selectedElementIdInput = document.getElementById('selectedElementId');
+        const selectedElementTypeInput = document.getElementById('selectedElementType');
+
+        function init() {
+            map = L.map('map-container').setView([51.505, -0.09], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+
+            unitsLayer = L.layerGroup().addTo(map);
+            drawnItems = new L.FeatureGroup().addTo(map);
+
+            // Leaflet.draw controls
+            const drawControl = new L.Control.Draw({
+                edit: { featureGroup: drawnItems, remove: false }, // Allow editing, but custom delete via panel
+                draw: {
+                    polygon: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                    polyline: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                    rectangle: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                    circle: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                    marker: true
+                }
+            });
+            map.addControl(drawControl);
+
+            map.on(L.Draw.Event.CREATED, function (event) {
+                const layer = event.layer;
+                const type = event.layerType;
+                const id = `draw_${elementIdCounter++}`;
+                
+                let data = { 
+                    id: id, 
+                    type: type, // 'marker', 'polyline', 'polygon', etc.
+                    team: currentTeam, 
+                    name: `${type.charAt(0).toUpperCase() + type.slice(1)} (${currentTeam})`, 
+                    notes: "" 
+                };
+
+                if (type === 'marker') {
+                    data.latlng = layer.getLatLng();
+                } else { // polylines, polygons, etc.
+                    data.latlngs = layer.getLatLngs(); // Or toGeoJSON for complex shapes
+                     layer.setStyle({ color: currentTeam === 'blue' ? 'blue' : 'red', weight: 3 });
+                }
+                
+                allMapElements[id] = { data: data, layer: layer, type: 'drawn' };
+                drawnItems.addLayer(layer);
+                
+                layer.on('click', () => openEditPanel(id, 'drawn'));
+                openEditPanel(id, 'drawn'); // Open panel for newly created item
+                updateTeamVisuals();
+            });
+            
+            map.on('draw:edited', function (e) {
+                e.layers.eachLayer(function (layer) {
+                    const element = Object.values(allMapElements).find(el => el.layer === layer);
+                    if (element) {
+                        const id = element.data.id;
+                        if (element.data.type === 'marker') {
+                            allMapElements[id].data.latlng = layer.getLatLng();
+                        } else {
+                            allMapElements[id].data.latlngs = layer.getLatLngs();
+                        }
+                        console.log(`Element ${id} edited.`);
+                    }
+                });
+            });
+
+
+            // Drag and Drop for unit palette
+            const unitPaletteItems = document.querySelectorAll('.unit-palette-item');
+            unitPaletteItems.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+            });
+
+            const mapContainer = document.getElementById('map-container');
+            mapContainer.addEventListener('dragover', handleDragOver);
+            mapContainer.addEventListener('drop', handleDrop);
+            
+            // Initial team visuals
+            _updateTeamSelectorVisuals();
+        }
+        
+        function _getUnitIcon(unitType, team) {
+            const baseIconHtml = unitIcons[unitType] ? unitIcons[unitType].options.html : "<div style='background-color:grey;'>U</div>";
+            const teamColor = team === 'blue' ? 'blue' : 'red';
+            // Modify HTML to include team border or background hint
+            const teamStyledHtml = baseIconHtml.replace(/style='/, `style='border: 2px solid ${teamColor}; box-sizing: border-box;`);
+            return L.divIcon({
+                className: `custom-div-icon ${team}-team-map-icon`,
+                html: teamStyledHtml,
+                iconSize: unitIcons[unitType] ? unitIcons[unitType].options.iconSize : [20,20],
+                iconAnchor: unitIcons[unitType] ? unitIcons[unitType].options.iconAnchor : [10,10]
+            });
+        }
+
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.unitType);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const unitType = e.dataTransfer.getData('text/plain');
+            const mapContainerRect = e.target.getBoundingClientRect();
+            // Calculate LatLng from drop position
+            const point = L.point(e.clientX - mapContainerRect.left, e.clientY - mapContainerRect.top);
+            const latlng = map.containerPointToLatLng(point);
+
+            addUnitToMap(unitType, latlng, currentTeam);
+        }
+
+        function addUnitToMap(unitType, latlng, team, unitData = null) {
+            const id = unitData ? unitData.id : `unit_${elementIdCounter++}`;
+            const name = unitData ? unitData.name : `${unitType.charAt(0).toUpperCase() + unitType.slice(1)} (${team})`;
+            const notes = unitData ? unitData.notes : "";
+
+            const icon = _getUnitIcon(unitType, team);
+            const marker = L.marker(latlng, { 
+                icon: icon, 
+                draggable: true, 
+                unitId: id // Custom property
+            }).addTo(unitsLayer);
+
+            marker.on('dragend', function(event) {
+                const newLatLng = event.target.getLatLng();
+                allMapElements[id].data.latlng = newLatLng;
+            });
+            
+            marker.on('click', () => openEditPanel(id, 'unit'));
+
+            allMapElements[id] = {
+                data: { id, type: unitType, name, notes, latlng, team },
+                layer: marker,
+                type: 'unit'
+            };
+            updateTeamVisuals(); // Apply team visibility immediately
+            return allMapElements[id];
+        }
+        
+        function openEditPanel(elementId, elementType) { // elementType: 'unit' or 'drawn'
+            if (selectedMapElement && selectedMapElement.layer) {
+                 // Remove highlight from previously selected
+                selectedMapElement.layer.getElement()?.classList.remove('selected-map-element');
+                if(selectedMapElement.layer.setStyle) selectedMapElement.layer.setStyle({ weight: 3 }); // Reset path style
+            }
+
+            const element = allMapElements[elementId];
+            if (!element) return;
+
+            selectedMapElement = { id: elementId, type: elementType, layer: element.layer };
+            
+            // Add highlight to current selection
+            element.layer.getElement()?.classList.add('selected-map-element');
+            if (element.layer.setStyle && elementType === 'drawn') element.layer.setStyle({ weight: 5 }); // Highlight path
+
+            selectedElementIdInput.value = elementId;
+            selectedElementTypeInput.value = elementType;
+            elementNameInput.value = element.data.name || '';
+            elementNotesInput.value = element.data.notes || '';
+            rightPanel.style.display = 'block';
+        }
+
+        function updateSelectedElement() {
+            const id = selectedElementIdInput.value;
+            if (!id || !allMapElements[id]) return;
+
+            allMapElements[id].data.name = elementNameInput.value;
+            allMapElements[id].data.notes = elementNotesInput.value;
+            // For units, could update their icon if name changes significantly, etc.
+            // For drawn features, could update popups or tooltips if used.
+            console.log(`Element ${id} updated.`);
+            // Potentially update visual representation if name is part of it
+            // For example, if unit icons had names:
+            // if (allMapElements[id].type === 'unit') {
+            //    allMapElements[id].layer.setIcon(_getUnitIcon(allMapElements[id].data.type, allMapElements[id].data.team, allMapElements[id].data.name));
+            // }
+        }
+        
+        function deleteSelectedElement() {
+            const id = selectedElementIdInput.value;
+            if (!id || !allMapElements[id]) return;
+
+            const element = allMapElements[id];
+            if (element.type === 'unit') {
+                unitsLayer.removeLayer(element.layer);
+            } else { // drawn
+                drawnItems.removeLayer(element.layer);
+            }
+            delete allMapElements[id];
+            deselectElement();
+            console.log(`Element ${id} deleted.`);
+        }
+
+        function deselectElement() {
+             if (selectedMapElement && selectedMapElement.layer) {
+                selectedMapElement.layer.getElement()?.classList.remove('selected-map-element');
+                if(selectedMapElement.layer.setStyle && selectedMapElement.type === 'drawn') {
+                    // Reset to original team color/weight
+                    const originalTeam = allMapElements[selectedMapElement.id]?.data.team;
+                    if (originalTeam) {
+                         selectedMapElement.layer.setStyle({ 
+                             color: originalTeam === 'blue' ? 'blue' : 'red',
+                             weight: 3 
+                         });
+                    }
+                }
+            }
+            selectedMapElement = null;
+            rightPanel.style.display = 'none';
+            selectedElementIdInput.value = '';
+            selectedElementTypeInput.value = '';
+        }
+
+        function _updateTeamSelectorVisuals() {
+            const selector = document.getElementById('teamSelector');
+            selector.classList.remove('blue-team-el', 'red-team-el');
+            selector.classList.add(currentTeam === 'blue' ? 'blue-team-el' : 'red-team-el');
+            
+            // Update draw control colors
+             map.eachLayer(layer => {
+                if (layer instanceof L.Control.Draw) {
+                    layer.setDrawingOptions({
+                        polygon: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                        polyline: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                        rectangle: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                        circle: { shapeOptions: { color: currentTeam === 'blue' ? 'blue' : 'red' } },
+                        // Marker doesn't have a shapeOption for color in the same way
+                    });
+                }
+            });
+        }
+
+        function toggleTeam(team) {
+            currentTeam = team;
+            _updateTeamSelectorVisuals();
+            console.log("Switched to " + currentTeam + " team.");
+            // Does not automatically hide units, that's a separate toggle
+        }
+
+        function toggleUnitVisibility() {
+            otherTeamVisible = !otherTeamVisible;
+            updateTeamVisuals();
+        }
+        
+        function updateTeamVisuals() {
+            Object.values(allMapElements).forEach(element => {
+                const elLayer = element.layer;
+                const elData = element.data;
+                
+                // Reset styles first
+                elLayer.getElement()?.classList.remove('blue-team-map-icon', 'red-team-map-icon');
+                if (elLayer.setStyle) { // For paths/shapes
+                    elLayer.setStyle({ opacity: 1, fillOpacity: 0.2 }); // Default opacity
+                } else { // For markers (units)
+                     elLayer.setOpacity(1);
+                }
+
+                if (element.type === 'unit') {
+                    // Re-apply base team icon style
+                    elLayer.setIcon(_getUnitIcon(elData.type, elData.team));
+                } else if (element.type === 'drawn') {
+                    // Re-apply base team path style
+                    elLayer.setStyle({ color: elData.team === 'blue' ? 'blue' : 'red' });
+                }
+
+
+                // Apply visibility based on toggle
+                if (elData.team !== currentTeam && !otherTeamVisible) {
+                    if (elLayer.setStyle) { // For paths/shapes
+                        elLayer.setStyle({ opacity: 0.1, fillOpacity: 0.05 });
+                    } else { // For markers (units)
+                        elLayer.setOpacity(0.1);
+                    }
+                }
+            });
+        }
+        
+        function saveSession() {
+            const sessionData = {
+                mapView: {
+                    center: map.getCenter(),
+                    zoom: map.getZoom()
+                },
+                currentTeam: currentTeam,
+                otherTeamVisible: otherTeamVisible,
+                elementIdCounter: elementIdCounter,
+                elements: Object.values(allMapElements).map(el => {
+                    let serializableData = { ...el.data }; // Copy basic data
+                    if (el.type === 'unit') {
+                        serializableData.latlng = el.layer.getLatLng(); // Ensure current position
+                    } else if (el.type === 'drawn') {
+                        // For drawn items, store their GeoJSON representation for robustness
+                        serializableData.geoJSON = el.layer.toGeoJSON();
+                        // Remove latlngs if it exists, geoJSON is preferred
+                        delete serializableData.latlngs; 
+                        delete serializableData.latlng; // for markers
+                    }
+                    return serializableData;
+                })
+            };
+
+            const jsonString = JSON.stringify(sessionData, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "wargame-session.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            console.log("Session saved.");
+        }
+        
+        function clearCurrentState() {
+            // Clear units
+            unitsLayer.clearLayers();
+            // Clear drawn items
+            drawnItems.clearLayers();
+            // Clear internal data store
+            allMapElements = {};
+            elementIdCounter = 0; // Reset counter or ensure loaded one is higher
+            deselectElement(); // Close panel if open
+        }
+
+        function handleFileLoad(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const sessionData = JSON.parse(e.target.result);
+                    loadSession(sessionData);
+                } catch (error) {
+                    console.error("Error parsing session file:", error);
+                    alert("Failed to load session: Invalid file format.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = null; // Reset file input
+        }
+
+        function loadSession(data) {
+            clearCurrentState();
+
+            map.setView(data.mapView.center, data.mapView.zoom);
+            currentTeam = data.currentTeam || 'blue';
+            otherTeamVisible = data.otherTeamVisible !== undefined ? data.otherTeamVisible : true;
+            elementIdCounter = data.elementIdCounter || 0; // Restore counter
+
+            document.getElementById('teamSelector').value = currentTeam;
+            _updateTeamSelectorVisuals();
+
+
+            data.elements.forEach(elData => {
+                if (UNIT_STATS[elData.type]) { // Heuristic: if type is in UNIT_STATS, it's a unit
+                    addUnitToMap(elData.type, L.latLng(elData.latlng.lat, elData.latlng.lng), elData.team, elData);
+                } else if (elData.geoJSON) { // It's a drawn feature
+                    const layer = L.geoJSON(elData.geoJSON, {
+                        style: function(feature) {
+                            return { color: elData.team === 'blue' ? 'blue' : 'red', weight: 3 };
+                        },
+                        pointToLayer: function(feature, latlng) {
+                            // If it's a point GeoJSON from a Leaflet.draw marker
+                            if(elData.type === 'marker') return L.marker(latlng); // Use default icon or customize
+                            return L.marker(latlng); // Fallback
+                        }
+                    }).getLayers()[0]; // Assuming single feature per geoJSON entry from L.Draw
+                    
+                    if(layer) {
+                        allMapElements[elData.id] = { data: elData, layer: layer, type: 'drawn' };
+                        drawnItems.addLayer(layer);
+                        layer.on('click', () => openEditPanel(elData.id, 'drawn'));
+                    }
+                }
+            });
+            
+            updateTeamVisuals(); // Apply visibility rules
+            console.log("Session loaded.");
+        }
+        
+        // Simplified UNIT_STATS for type checking, actual icons are separate
+        const UNIT_STATS = { infantry: {}, tank: {}, artillery: {}, recon: {} };
+
+
+        // Public API
+        return {
+            init,
+            saveSession,
+            handleFileLoad, // Expose for input onchange
+            toggleTeam,
+            toggleUnitVisibility,
+            updateSelectedElement,
+            deleteSelectedElement,
+            deselectElement
+        };
+    })();
+
+    document.addEventListener('DOMContentLoaded', app.init);
+    </script>
+</body>
+</html>

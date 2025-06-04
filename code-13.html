@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Win's Portfolio - Modern Dark Theme</title>
+    <script src="https://unpkg.com/scrollreveal"></script>
+    <style>
+        /* Global Variables & Reset */
+        :root {
+            --bg-color: #121212; /* Main dark background */
+            --card-bg-color: #1e1e1e; /* Background for cards and some sections */
+            --primary-text-color: #e0e0e0; /* Main text color */
+            --secondary-text-color: #b3b3b3; /* Subdued text color */
+            --accent-color: #007bff; /* Vibrant accent color (e.g., Apple Blue) */
+            --accent-color-hover: #005ec4; /* Darker accent for hover */
+            --border-color: #333333; /* Borders and lines */
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            --border-radius: 12px; /* Consistent rounded corners */
+            --section-padding-vertical: 80px;
+            --header-height: 70px; /* Fixed header height */
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--primary-text-color);
+            margin: 0;
+            padding: 0;
+            line-height: 1.7;
+            overflow-x: hidden;
+            padding-top: var(--header-height); /* Space for fixed header */
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: #ffffff;
+            font-weight: 600;
+            margin-top: 0;
+            line-height: 1.3;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 3.8rem);
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: clamp(1.3rem, 3vw, 1.8rem);
+            color: var(--primary-text-color);
+        }
+
+        p {
+            font-size: clamp(0.95rem, 2vw, 1.1rem);
+            margin-bottom: 1.5em;
+            color: var(--secondary-text-color);
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--accent-color-hover);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Scroll Progress Bar */
+        #progress-bar {
+            height: 3px;
+            background-color: var(--accent-color);
+            position: fixed;
+            top: 0; 
+            left: 0;
+            z-index: 1001; /* Above header */
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        /* Navigation Header */
+        header {
+            background-color: rgba(18, 18, 18, 0.85); 
+            backdrop-filter: blur(10px);
+            padding: 0; /* Padding handled by container and item alignment */
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+        }
+        
+        header .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+        }
+
+        nav ul li {
+            margin: 0 15px;
+        }
+
+        nav ul li a {
+            color: var(--primary-text-color);
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 5px;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        nav ul li a:hover {
+            color: #fff;
+        }
+
+        nav ul li a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background-color: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        nav ul li a:hover::after,
+        nav ul li a.active::after { /* Active class for current section */
+            width: 100%;
+        }
+        .nav-overlay { display: none; }
+
+
+        /* Full-Page Image Section (Intro) */
+        #intro {
+            height: calc(100vh - var(--header-height)); /* Adjust for fixed header */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            /* REPLACE with your desired hero image */
+            background: url('https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1920&q=80') no-repeat center center/cover; 
+            padding: 0; /* Remove default section padding */
+        }
+
+        .full-page-image { /* This div is for the text and overlay */
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.55); /* Dark overlay for text contrast */
+        }
+
+        .overlay-text {
+            padding: 20px;
+        }
+
+        .overlay-text h1 {
+            margin-bottom: 0.5em;
+            color: #fff;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+
+        .overlay-text p {
+            font-size: clamp(1.2rem, 3vw, 1.6rem);
+            color: #f0f0f0;
+            font-weight: 400;
+            text-shadow: 1px 1px 6px rgba(0,0,0,0.7);
+        }
+        .fade-in { 
+            opacity: 0; /* Initial state for ScrollReveal */
+        }
+
+        /* General Section Styling */
+        section {
+            padding: var(--section-padding-vertical) 0;
+        }
+
+        /* About Section */
+        #about .container {
+            max-width: 800px;
+            text-align: center;
+        }
+        #about .container p {
+            font-size: 1.1rem; 
+            line-height: 1.8;
+            color: var(--primary-text-color);
+        }
+        #about .container p a {
+            font-weight: 600;
+            border-bottom: 1px solid var(--accent-color);
+            transition: border-bottom-color 0.3s ease;
+        }
+        #about .container p a:hover {
+            border-bottom-color: var(--accent-color-hover);
+        }
+
+        /* Skills Section */
+        .skills {
+            margin-top: 50px;
+            text-align: center;
+        }
+        .skills h3 {
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+            color: #fff;
+        }
+        .skill-bar {
+            margin-bottom: 20px;
+            background-color: var(--card-bg-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            text-align: left;
+        }
+        .skill-name {
+            padding: 12px 20px;
+            display: block;
+            color: var(--primary-text-color);
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        .skill-level {
+            height: 10px;
+            background: linear-gradient(90deg, var(--accent-color) 0%, var(--accent-color-hover) 100%);
+            width: 0%; /* Set by data-level via JS */
+            border-radius: 0px; /* Bar is inside parent with rounded corners */
+            margin: 0 20px 15px 20px; /* Visual padding for the bar */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; 
+            transition: width 1s 0.3s ease-out; /* Animation for width */
+        }
+
+        /* Timeline Section */
+        #timeline-content {
+            background-color: #1a1a1a; /* Alternate dark shade */
+        }
+        #timeline-content h2 {
+            margin-bottom: 50px;
+        }
+        .timeline {
+            list-style: none;
+            padding: 0;
+            position: relative;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .timeline::before { /* Central line */
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 3px;
+            background-color: var(--border-color);
+            transform: translateX(-50%);
+            border-radius: 3px;
+        }
+        .timeline .event {
+            padding: 25px;
+            background-color: var(--card-bg-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            position: relative;
+            width: calc(50% - 45px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .timeline .event:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+        .timeline .event:nth-child(odd) { left: 0; }
+        .timeline .event:nth-child(even) { left: calc(50% + 45px); }
+
+        .timeline .event::before { /* Date marker */
+            content: attr(data-date);
+            position: absolute;
+            top: 25px;
+            width: auto;
+            padding: 5px 10px;
+            height: 30px;
+            line-height: 20px;
+            border-radius: var(--border-radius);
+            background-color: var(--accent-color);
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            z-index: 1;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .timeline .event:nth-child(odd)::before { right: -85px; }
+        .timeline .event:nth-child(even)::before { left: -85px; }
+
+        .timeline .event::after { /* Arrowheads */
+            content: '';
+            position: absolute;
+            top: 32px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        .timeline .event:nth-child(odd)::after {
+            right: -15px;
+            border-width: 8px 0 8px 15px;
+            border-color: transparent transparent transparent var(--card-bg-color);
+        }
+        .timeline .event:nth-child(even)::after {
+            left: -15px;
+            border-width: 8px 15px 8px 0;
+            border-color: transparent var(--card-bg-color) transparent transparent;
+        }
+        .timeline .event h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        .timeline .event p {
+            font-size: 0.95rem;
+            color: var(--secondary-text-color);
+            margin-bottom: 0;
+        }
+        @media (max-width: 768px) { /* Responsive Timeline */
+            .timeline::before { left: 30px; }
+            .timeline .event,
+            .timeline .event:nth-child(even) {
+                width: calc(100% - 60px);
+                left: 60px;
+            }
+            .timeline .event:nth-child(odd)::before,
+            .timeline .event:nth-child(even)::before {
+                left: -45px;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+            .timeline .event:nth-child(odd)::after,
+            .timeline .event:nth-child(even)::after {
+                left: -15px;
+                border-width: 8px 15px 8px 0;
+                border-color: transparent var(--card-bg-color) transparent transparent;
+            }
+        }
+
+        /* Feature Video Section */
+        #feature-video .container h2 { margin-bottom: 40px; }
+        .feature-video-wrapper { /* Wrapper for iframe */
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-color: #000; /* Fallback bg */
+        }
+        .feature-video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Text-Image Sections */
+        .light-bg { background-color: #1a1a1a; }
+        .center-text-section { margin-bottom: 60px; }
+        .center-text-section .section-title {
+            font-size: clamp(2rem, 4.5vw, 2.8rem);
+            margin-bottom: 15px;
+        }
+        .center-text-section .section-subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
+            color: var(--secondary-text-color);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .section-row {
+            display: flex;
+            align-items: center;
+            gap: 50px;
+            margin-bottom: 70px;
+        }
+        .section-row:last-child { margin-bottom: 0; }
+        .section-row .text-container,
+        .section-row .image-container { flex: 1; }
+
+        .section-row .image-container img {
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .section-row .image-container img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        }
+        .section-row .text-container .section-heading {
+            font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .section-row .text-container .section-text {
+            font-size: clamp(1rem, 2vw, 1.1rem);
+            line-height: 1.8;
+            color: var(--secondary-text-color);
+        }
+        .text-right-image-left { flex-direction: row-reverse; }
+
+        @media (max-width: 768px) { /* Responsive Text-Image */
+            .section-row,
+            .text-right-image-left {
+                flex-direction: column;
+                gap: 30px;
+            }
+            .section-row .text-container {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            .text-right-image-left .image-container { order: -1; }
+        }
+
+        /* Collage Section */
+        #collage .fade-in { /* Target inner div for reveal */ }
+        .collage { /* Grid container */
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+        .collage-item {
+            background-color: var(--card-bg-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            aspect-ratio: 1 / 1; /* Square items */
+        }
+        .collage-item:hover {
+            transform: translateY(-8px) scale(1.04);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+        }
+        .collage-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Contact Section */
+        #contact .container h2 { margin-bottom: 30px; }
+        .contact-info { text-align: center; }
+        .contact-info p {
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            color: var(--secondary-text-color);
+        }
+        .contact-info .button {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 14px 30px;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 8px;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .contact-info .button:hover {
+            background-color: var(--accent-color-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3); /* Shadow with accent color's RGB */
+        }
+
+        /* Footer */
+        footer {
+            background-color: #0a0a0a; /* Darkest background */
+            color: var(--secondary-text-color);
+            text-align: center;
+            padding: 40px 0;
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+        }
+        footer p {
+            margin: 0;
+            color: var(--secondary-text-color);
+        }
+        
+    </style>
+</head>
+<body>
+    <!-- Scroll Progress Bar -->
+    <div id="progress-bar"></div>
+
+    <!-- Navigation Header -->
+    <header>
+        <div class="container">
+            <nav>
+                <ul>
+                    <li><a href="#about" class="nav-link">About</a></li>
+                    <li><a href="#feature-video" class="nav-link">Feature Video</a></li>
+                    <li><a href="#text-image-sections2" class="nav-link">Gallery</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Full-Page Image Section -->
+    <section id="intro">
+        <div class="full-page-image">
+            <div class="overlay-text fade-in">
+                <h1>- Win's Portfolio -</h1>
+                <p>No risk. No story.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about">
+        <div class="container">
+            <h2 class="fade-in">About Me</h2>
+            <p class="fade-in">
+                Hello, I'm Win (Kirati Rattanaporn), a passionate technology and creative enthusiast from Bangkok, Thailand.  
+                Currently in Grade 10, I have a strong interest in technology, astronomy, photography, and film.  
+                Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports.  
+                My goal is to transfer to SPSM School to study multimedia and later pursue a degree at Chulalongkorn University's Faculty of Communication Arts.  
+                <br><br>
+                You can learn more about me on my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank">Wikipedia page</a>.
+            </p>
+            
+            <div class="skills fade-in">
+                <h3>Skills</h3>
+                <div class="skill-bar">
+                    <div class="skill-name">Photography</div>
+                    <div class="skill-level" data-level="75%"></div>
+                </div>
+                <div class="skill-bar">
+                    <div class="skill-name">Technology</div>
+                    <div class="skill-level" data-level="85%"></div>
+                </div>
+                <div class="skill-bar">
+                    <div class="skill-name">Film</div>
+                    <div class="skill-level" data-level="70%"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Timeline Section -->
+    <section id="timeline-content">
+        <div class="container">
+            <h2 class="fade-in">Achievements and Awards</h2>
+            <ul class="timeline fade-in">
+                <li class="event" data-date="2022">
+                    <h3>Gold Medal in Running</h3>
+                    <p>Won a gold medal in the school sports day, showcasing speed and determination.</p>
+                </li>
+                <li class="event" data-date="2022">
+                    <h3>Gold Medal in Robotics</h3>
+                    <p>Earned my first gold medal in robotics, marking the beginning of my journey in technology.</p>
+                </li>
+                <li class="event" data-date="2022">
+                    <h3>Gold Medal in Robotics</h3>
+                    <p>Won another gold medal in robotics, further developing my skills in innovation.</p>
+                </li>
+                <li class="event" data-date="2023">
+                    <h3>English Contest Award</h3>
+                    <p>Received an award in an English contest, demonstrating strong language skills.</p>
+                </li>
+                <li class="event" data-date="2023">
+                    <h3>Silver Medal in Running</h3>
+                    <p>Won a silver medal at the school sports day, continuing my success in athletics.</p>
+                </li>
+                <li class="event" data-date="2023">
+                    <h3>Gold Medal in Robotics</h3>
+                    <p>Earned my third gold medal in robotics, proving my expertise in the field.</p>
+                </li>
+                <li class="event" data-date="2023">
+                    <h3>Gold Medal in Robotics</h3>
+                    <p>Achieved my fourth gold medal in robotics, further advancing my skills in technology.</p>
+                </li>
+                <li class="event" data-date="2023">
+                    <h3>Southern EP Open House - Mathematics Project</h3>
+                    <p>Won a gold award for excellence in a mathematics project.</p>
+                </li>
+                <li class="event" data-date="2024">
+                    <h3>Gold Medal in Robotics - National Level</h3>
+                    <p>Won my first gold medal in robotics at the national level.</p>
+                </li>
+                <li class="event" data-date="2024">
+                    <h3>Gold Medal in Robotics - National Level</h3>
+                    <p>Secured another gold medal in robotics at the national level.</p>
+                </li>
+                <li class="event" data-date="2024">
+                    <h3>Silver Medal in 200m Running</h3>
+                    <p>Won silver in the 200m race at the school sports day, finishing just 0.69 seconds behind the winner.</p>
+                </li>
+                <li class="event" data-date="2024">
+                    <h3>Fourth Place in Running</h3>
+                    <p>Finished fourth in a race at the school sports day, demonstrating perseverance.</p>
+                </li>
+                <li class="event" data-date="2024">
+                    <h3>Silver Award in Regional English Contest</h3>
+                    <p>Earned a silver award at the regional level, showcasing dedication to English.</p>
+                </li>
+                   <li class="event" data-date="2024">
+                    <h3>Southern EP Open House - Multi-Skills</h3>
+                    <p>Earned a gold award in the multi-skills competition.</p>
+                </li>
+            </ul>
+        </div>
+    </section>
+    
+    <!-- Feature Video Section -->
+    <section id="feature-video">
+        <div class="container">
+            <h2 class="fade-in">Feature Video</h2>
+            <div class="feature-video-wrapper fade-in"> 
+                <iframe src="https://www.youtube.com/embed/BMhot-xCYmk" title="Feature Video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </section>
+
+    <!-- Text Image Sections (Photography Journey 1) -->
+    <section id="text-image-sections" class="section-padding light-bg">
+        <div class="container">
+            <div class="center-text-section text-center fade-in">
+                <h2 class="section-title">A Journey Through Photography</h2>
+                <p class="section-subtitle">Capturing moments that speak louder than words.</p>
+            </div>
+    
+            <div class="text-left-image-right section-row fade-in">
+                <div class="text-container">
+                    <h3 class="section-heading">Technology and Creativity</h3>
+                    <p class="section-text">Combining technology with creativity allows for endless possibilities in visual storytelling. Every photo I take is a testament to the beauty of innovation.</p>
+                </div>
+                <div class="image-container">
+                    <img src="Pic10.webp" alt="Technology in Photography">
+                </div>
+            </div>
+    
+            <div class="text-right-image-left section-row fade-in">
+                <div class="image-container">
+                    <img src="Pic9.webp" alt="Creative Photography">
+                </div>
+                <div class="text-container">
+                    <h3 class="section-heading">The Art of Storytelling</h3>
+                    <p class="section-text">Photography is not just about capturing images; it’s about telling stories. Through my lens, I convey emotions, experiences, and moments that connect deeply with viewers.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Collage Section (Photo Gallery) -->
+    <section id="text-image-sections2" class="section-padding light-bg"> <!-- This ID is linked in Nav as "Gallery" -->
+        <div class="container">
+            <div class="center-text-section text-center fade-in">
+                <h2 class="section-title">Photo Gallery</h2>
+                <p class="section-subtitle">A collection of captured moments.</p>
+            </div>
+
+            <div id="collage"> <!-- Wrapper for the grid -->
+                <div class="collage fade-in"> <!-- The grid itself -->
+                    <div class="collage-item">
+                        <img src="Pic2.webp" alt="Photo 2">
+                    </div>
+                    <div class="collage-item">
+                        <img src="Pic3.webp" alt="Photo 3">
+                    </div>
+                    <div class="collage-item">
+                        <img src="Pic4.webp" alt="Photo 4">
+                    </div>
+                    <div class="collage-item">
+                        <img src="Pic5.webp" alt="Photo 5">
+                    </div>
+                    <div class="collage-item">
+                        <img src="Pic6.webp" alt="Photo 6">
+                    </div>
+                     <div class="collage-item"> <!-- Example: Add another image if available -->
+                         <img src="Pic9.webp" alt="Photo 9 - Example from other section"> 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact">
+        <div class="container">
+            <h2 class="fade-in">Contact</h2>
+            <div class="contact-info fade-in">
+                <p>Feel free to reach out to me through the following platforms:</p>
+                <a href="https://www.instagram.com/Win.rn" target="_blank" class="button">Instagram (@Win.rn)</a>
+                <a href="https://www.instagram.com/Win.albums" target="_blank" class="button">Photography Instagram (@Win.albums)</a>
+                <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" class="button">YouTube Channel</a>
+                <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" class="button">Wikipedia Biography</a>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2024 Win. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ScrollReveal Initialization
+            const sr = ScrollReveal({
+                origin: 'bottom',
+                distance: '50px',
+                duration: 800,
+                delay: 100, // Reduced global delay
+                easing: 'cubic-bezier(0.5, 0, 0.2, 1)',
+                reset: false 
+            });
+
+            sr.reveal('.fade-in'); // Generic fade-in for elements with this class
+
+            // Specific reveals for staggered effect
+            sr.reveal('#intro .overlay-text h1', { delay: 200 });
+            sr.reveal('#intro .overlay-text p', { delay: 400 });
+            
+            sr.reveal('#about .container h2', { origin: 'top' });
+            sr.reveal('#about .container p', { delay: 150 });
+            sr.reveal('.skills h3', { delay: 200 });
+            
+            sr.reveal('#timeline-content h2', { origin: 'top' });
+            sr.reveal('.timeline .event', { interval: 150 });
+
+            sr.reveal('#feature-video h2', { origin: 'top' });
+            sr.reveal('.feature-video-wrapper', { delay: 150, scale: 0.95 });
+            
+            sr.reveal('.center-text-section', { origin: 'top' });
+            sr.reveal('.section-row', { interval: 150, distance: '30px' });
+            
+            sr.reveal('.collage .collage-item', { interval: 100, scale: 0.95 });
+
+            sr.reveal('#contact h2', { origin: 'top' });
+            sr.reveal('.contact-info p', { delay: 150 });
+            sr.reveal('.contact-info .button', { interval: 100, delay: 200 });
+
+            // Skill Bar Animation
+            document.querySelectorAll('.skill-bar').forEach(barElement => {
+                const skillLevelElement = barElement.querySelector('.skill-level');
+                if (skillLevelElement) {
+                    const level = skillLevelElement.getAttribute('data-level');
+                    // Use ScrollReveal to trigger the width change when the skill-bar itself is revealed
+                    ScrollReveal().reveal(barElement, {
+                        // duration: 800, // Inherit from sr default
+                        // delay: 300, // Stagger from parent section reveal
+                        beforeReveal: function (el) {
+                            skillLevelElement.style.width = level;
+                        },
+                        // Optional: Reset width if reset: true is used in main sr config
+                        // beforeReset: function (el) { skillLevelElement.style.width = '0%'; }
+                    });
+                }
+            });
+
+            // Scroll Progress Bar
+            const progressBar = document.getElementById('progress-bar');
+            const pageHeader = document.querySelector('header'); // Get header for height calculation
+
+            window.addEventListener('scroll', () => {
+                const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrollProgress = (scrollTop / scrollHeight) * 100;
+                
+                if (progressBar) {
+                    progressBar.style.width = scrollProgress + '%';
+                }
+            });
+
+            // Active Nav Link Highlight on Scroll
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('header nav ul li a');
+            const headerHeight = pageHeader ? pageHeader.offsetHeight : 70; // Fallback if header not found
+
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - (headerHeight + 60) ) { // 60px offset
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') && link.getAttribute('href').substring(1) === current) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

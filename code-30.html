@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Turn-Based Wargame (Capitals & Units)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; background-color: #282c34; color: #abb2bf; }
+        #initial-setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #21252b; padding: 20px; text-align: center; }
+        #initial-setup-screen h1 { color: #61afef; }
+        #initial-setup-screen label { margin-top: 15px; margin-bottom: 5px; font-size: 1.1em; }
+        #initial-setup-screen select, #initial-setup-screen button { padding: 10px; margin-top: 5px; font-size: 1em; border-radius: 5px; border: 1px solid #3b4048; background-color: #3b4048; color: #abb2bf; }
+        #initial-setup-screen button { background-color: #61afef; color: #282c34; cursor: pointer; }
+        #initial-setup-screen button:hover { background-color: #5295cc; }
+        
+        #game-container { display: none; /* Hidden initially */ flex: 1; overflow: hidden; flex-direction: row; }
+        #map-area { flex: 3; position: relative; }
+        #map { height: 100%; width: 100%; background-color: #3a3f4b;}
+        #sidebar { flex: 1; background-color: #21252b; padding: 15px; overflow-y: auto; border-left: 2px solid #1c1f24; display: flex; flex-direction: column; min-width: 300px;}
+        
+        .controls { margin-bottom: 15px; padding: 12px; background-color: #2c313a; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+        .controls h3 { margin-top: 0; margin-bottom: 10px; font-size: 1.2em; color: #61afef; border-bottom: 1px solid #3b4048; padding-bottom: 8px;}
+        button { padding: 10px 15px; margin: 5px; border: none; background-color: #61afef; color: #282c34; cursor: pointer; border-radius: 5px; font-size: 0.95em; transition: background-color 0.2s ease; }
+        button:hover { background-color: #5295cc; }
+        button:disabled { background-color: #3b4048; color: #5c6370; cursor: not-allowed; }
+        button.active { background-color: #98c379; color: #282c34; } /* Green for active state */
+        button.red-team-btn { background-color: #e06c75; color: #282c34;} /* Reddish for Red Team related */
+        button.red-team-btn:hover { background-color: #d15f6a; }
+        button.action-btn { background-color: #e5c07b; color: #282c34;} /* Yellowish for actions */
+        button.action-btn:hover { background-color: #d8b36a; }
+        button.end-turn-btn { background-color: #56b6c2; width: calc(100% - 10px); font-weight: bold;} /* Teal for end turn */
+        button.end-turn-btn:hover { background-color: #4aa1ac; }
+
+        #status-panel { margin-top: auto; padding: 12px; background-color: #2c313a; border-radius: 8px; font-size: 0.9em; min-height: 70px; box-shadow: 0 -2px 4px rgba(0,0,0,0.1);}
+        #selected-unit-info { padding: 12px; background-color: #2c313a; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+        #selected-unit-info h4 { margin-top: 0; margin-bottom: 10px; color: #e5c07b; font-size: 1.1em; }
+        #selected-unit-info p { margin: 5px 0; font-size: 0.9em; }
+        #selected-unit-info span { color: #c678dd; } /* Purple for stat values */
+
+        .leaflet-marker-icon.selected-unit-marker .unit-svg-icon { 
+            outline: 3px solid gold !important; 
+            outline-offset: 1px;
+        }
+        .acted-unit .unit-svg-icon { /* Combined class for moved or attacked */
+            filter: grayscale(80%) opacity(60%);
+        }
+
+        /* Unit Icons */
+        .unit-icon-wrapper { position: relative; width: 32px; height: 38px; } /* Slightly larger */
+        .unit-svg-icon {
+            width: 32px !important; height: 32px !important;
+            border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: bold; color: white;
+        }
+        .blue-team-primary { background-color: #4a90e2; border: 2px solid #8abcf3; } /* Blue */
+        .red-team-primary { background-color: #d0021b; border: 2px solid #f55f6e; } /* Red */
+        
+        .health-bar-bg { position: absolute; bottom: 0px; left: 3px; width: 26px; height: 4px; background-color: #555; border-radius: 2px; border: 1px solid #222; }
+        .health-bar { height: 100%; background-color: #98c379; border-radius: 2px; }
+        .fog-of-war .unit-icon-wrapper { opacity: 0.3; pointer-events: none; }
+        
+        /* Capital City Icon */
+        .capital-icon { text-align: center; }
+        .capital-icon-svg { font-size: 28px; } /* Star icon size */
+        .blue-capital-star { color: #4a90e2; }
+        .red-capital-star { color: #d0021b; }
+        .capital-name-label { background-color: rgba(0,0,0,0.6); color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+    <div id="initial-setup-screen">
+        <h1>Wargame Setup</h1>
+        <div>
+            <label for="player1Country">Player 1 (Blue) Select Country:</label>
+            <select id="player1Country">
+                <!-- Options will be populated by JS -->
+            </select>
+        </div>
+        <div>
+            <label for="player2Country">Player 2 (Red) Select Country:</label>
+            <select id="player2Country">
+                <!-- Options will be populated by JS -->
+            </select>
+        </div>
+        <button id="startGameBtn" onclick="initializeGameSetup()">Start Game</button>
+        <p id="setupError" style="color: #e06c75; margin-top: 15px;"></p>
+    </div>
+
+    <div id="game-container">
+        <div id="map-area">
+            <div id="map"></div>
+        </div>
+        <div id="sidebar">
+            <div class="controls">
+                <h3>Game Status</h3>
+                <p>Current Player: <strong id="currentPlayerDisplay"></strong></p>
+                <p>Turn: <strong id="turnCounter">1</strong></p>
+                <button id="endTurnBtn" class="end-turn-btn" onclick="endTurn()">End Turn</button>
+                <button onclick="confirmResetGame()">Reset Game</button>
+            </div>
+
+            <div id="selected-unit-info" style="display:none;">
+                <h4>Selected Unit (<span id="s-unit-type"></span>)</h4>
+                <p>ID: <span id="s-unit-id"></span> | Team: <span id="s-unit-team"></span></p>
+                <p>Health: <span id="s-unit-health"></span></p>
+                <p>Attack: <span id="s-unit-attack"></span> | Defense: <span id="s-unit-defense"></span></p>
+                <p>Move: <span id="s-unit-move"></span> km | Attack Range: <span id="s-unit-atk-range"></span> km</p>
+                <p>Vision: <span id="s-unit-vision"></span> km</p>
+                <p>Actions Left: <span id="s-unit-actions"></span></p>
+            </div>
+            
+            <div class="controls">
+                <h3>Unit Actions</h3>
+                <button id="moveBtn" class="action-btn" onclick="activateAction('move')" disabled>Move</button>
+                <button id="attackBtn" class="action-btn" onclick="activateAction('attack')" disabled>Attack</button>
+                <button id="cancelActionBtn" onclick="cancelAction()" style="display:none; background-color: #c678dd;">Cancel Action</button>
+                <p id="action-instructions" style="font-size:0.85em; margin-top:10px; color: #abb2bf;"></p>
+            </div>
+            
+            <div class="controls" id="placement-controls" style="display:none;">
+                 <h3>Unit Placement Phase</h3>
+                 <p>Units to place: <span id="unitsToPlaceType">Infantry</span> (<span id="unitsToPlaceCount">0</span> left)</p>
+                 <p>Click on your territory to place units.</p>
+            </div>
+
+            <div id="status-panel">
+                Welcome! Select countries and start the game.
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {
+    // --- Leaflet Map Instance ---
+    let map; // Will be initialized after country selection
+
+    // --- Game Constants ---
+    const COUNTRIES_DATA = {
+        "Thailand": { capitalCoords: [13.7563, 100.5018], capitalName: "Bangkok", territoryColor: 'rgba(74, 144, 226, 0.1)' },
+        "Cambodia": { capitalCoords: [11.5564, 104.9282], capitalName: "Phnom Penh", territoryColor: 'rgba(208, 2, 27, 0.1)' },
+        "Vietnam": { capitalCoords: [21.0285, 105.8542], capitalName: "Hanoi", territoryColor: 'rgba(245, 166, 35, 0.1)' },
+        "Laos": { capitalCoords: [17.9757, 102.6331], capitalName: "Vientiane", territoryColor: 'rgba(126, 211, 33, 0.1)' }
+    };
+    const UNIT_STATS = { // Ranges in meters
+        infantry: { name: "Infantry", symbol: "I", health: 100, attack: 25, defense: 10, move: 200000, attackRange: 100000, vision: 150000, actions: 2, cost: 50 },
+        tank: { name: "Tank", symbol: "T", health: 200, attack: 50, defense: 30, move: 300000, attackRange: 200000, vision: 200000, actions: 2, cost: 150 },
+        artillery: { name: "Artillery", symbol: "A", health: 70, attack: 70, defense: 5, move: 100000, attackRange: 400000, vision: 100000, actions: 1, cost: 100 }, // Can only attack or move, not both
+        recon: { name: "Recon", symbol: "R", health: 60, attack: 5, defense: 5, move: 400000, attackRange: 50000, vision: 350000, actions: 2, cost: 70 }
+    };
+    const PLACEMENT_UNITS_ORDER = ['infantry', 'infantry', 'tank', 'recon']; // Number and type of units to place
+
+    // --- Game State Variables ---
+    let units = [];
+    let unitIdCounter = 0;
+    let selectedUnit = null;
+    let currentPlayerTeam; // 'player1' or 'player2'
+    let player1CountryKey, player2CountryKey;
+    let player1Data, player2Data; // Will hold COUNTRIES_DATA objects + team color
+    let currentAction = 'none'; // 'none', 'move_targeting', 'attack_targeting'
+    let gamePhase = 'setup'; // 'setup', 'placement', 'playing', 'ended'
+    let turnCount = 1;
+    
+    let unitsToPlaceForCurrentPlayer = [];
+    let capitalMarkers = { player1: null, player2: null };
+    let territoryLayers = { player1: null, player2: null };
+
+
+    // --- UI Elements ---
+    const setupScreen = document.getElementById('initial-setup-screen');
+    const gameContainer = document.getElementById('game-container');
+    const player1CountrySelect = document.getElementById('player1Country');
+    const player2CountrySelect = document.getElementById('player2Country');
+    const setupError = document.getElementById('setupError');
+    
+    const currentPlayerDisplay = document.getElementById('currentPlayerDisplay');
+    const turnCounterDisplay = document.getElementById('turnCounter');
+    const statusPanel = document.getElementById('status-panel');
+    const sUnitInfoPanel = document.getElementById('selected-unit-info');
+    const moveBtn = document.getElementById('moveBtn');
+    const attackBtn = document.getElementById('attackBtn');
+    const cancelActionBtn = document.getElementById('cancelActionBtn');
+    const actionInstructions = document.getElementById('action-instructions');
+    
+    const placementControls = document.getElementById('placement-controls');
+    const unitsToPlaceTypeDisplay = document.getElementById('unitsToPlaceType');
+    const unitsToPlaceCountDisplay = document.getElementById('unitsToPlaceCount');
+    
+    let rangeVisualizations = { move: null, attack: null, vision: null };
+
+    // --- Populate Country Selectors ---
+    function populateCountrySelectors() {
+        Object.keys(COUNTRIES_DATA).forEach(countryKey => {
+            let option1 = new Option(countryKey, countryKey);
+            let option2 = new Option(countryKey, countryKey);
+            player1CountrySelect.add(option1);
+            player2CountrySelect.add(option2);
+        });
+    }
+
+    // --- Game Initialization ---
+    window.initializeGameSetup = function() {
+        player1CountryKey = player1CountrySelect.value;
+        player2CountryKey = player2CountrySelect.value;
+
+        if (player1CountryKey === player2CountryKey) {
+            setupError.textContent = "Players must select different countries.";
+            return;
+        }
+        setupError.textContent = "";
+
+        player1Data = { ...COUNTRIES_DATA[player1CountryKey], teamColor: '#4a90e2', teamName: 'Player 1 (Blue)' }; // Blueish
+        player2Data = { ...COUNTRIES_DATA[player2CountryKey], teamColor: '#d0021b', teamName: 'Player 2 (Red)' };   // Reddish
+
+        setupScreen.style.display = 'none';
+        gameContainer.style.display = 'flex';
+
+        // Initialize map centered between capitals or a default view
+        const avgLat = (player1Data.capitalCoords[0] + player2Data.capitalCoords[0]) / 2;
+        const avgLng = (player1Data.capitalCoords[1] + player2Data.capitalCoords[1]) / 2;
+        map = L.map('map', { preferCanvas: true }).setView([avgLat, avgLng], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        map.on('click', onMapClick);
+        
+        addCapitalMarkers();
+        // addTerritoryVisuals(); // Optional: visualize general territory
+        
+        gamePhase = 'placement';
+        currentPlayerTeam = 'player1';
+        startPlacementPhase();
+    }
+    
+    function addCapitalMarkers() {
+        const createCapitalIcon = (countryData, teamNameShort) => {
+            const iconColor = teamNameShort === 'P1' ? player1Data.teamColor : player2Data.teamColor;
+            return L.divIcon({
+                className: 'capital-icon',
+                html: `<svg class="capital-icon-svg" style="color:${iconColor};" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"></path></svg><div class="capital-name-label">${countryData.capitalName} (${teamNameShort})</div>`,
+                iconSize: [80, 40], // Increased to accommodate label
+                iconAnchor: [40, 20] // Centered
+            });
+        };
+        capitalMarkers.player1 = L.marker(player1Data.capitalCoords, { icon: createCapitalIcon(player1Data, 'P1'), zIndexOffset: -1000 }).addTo(map);
+        capitalMarkers.player2 = L.marker(player2Data.capitalCoords, { icon: createCapitalIcon(player2Data, 'P2'), zIndexOffset: -1000 }).addTo(map);
+    }
+
+    // --- Placement Phase ---
+    function startPlacementPhase() {
+        placementControls.style.display = 'block';
+        unitsToPlaceForCurrentPlayer = [...PLACEMENT_UNITS_ORDER]; // Get a copy
+        updatePlacementUI();
+        statusPanel.textContent = `${getCurrentPlayerData().teamName}, place your units near your capital.`;
+    }
+
+    function updatePlacementUI() {
+        if (unitsToPlaceForCurrentPlayer.length > 0) {
+            const nextUnitType = unitsToPlaceForCurrentPlayer[0];
+            unitsToPlaceTypeDisplay.textContent = UNIT_STATS[nextUnitType].name;
+            unitsToPlaceCountDisplay.textContent = unitsToPlaceForCurrentPlayer.length;
+            placementControls.querySelector('p:nth-child(2)').innerHTML = `Next unit: <strong>${UNIT_STATS[nextUnitType].name}</strong>. <span id="unitsToPlaceCount">${unitsToPlaceForCurrentPlayer.length}</span> units remaining for ${getCurrentPlayerData().teamName}.`;
+        } else {
+            placementControls.style.display = 'none';
+        }
+    }
+
+    function handlePlacementClick(latlng) {
+        const capitalCoords = L.latLng(getCurrentPlayerData().capitalCoords);
+        const placementDistance = map.distance(latlng, capitalCoords);
+        const MAX_PLACEMENT_DISTANCE = 200000; // Units must be placed within 200km of capital
+
+        if (placementDistance > MAX_PLACEMENT_DISTANCE) {
+            statusPanel.textContent = `Too far from your capital! Place units within ${(MAX_PLACEMENT_DISTANCE/1000).toFixed(0)}km.`;
+            return;
+        }
+
+        if (unitsToPlaceForCurrentPlayer.length > 0) {
+            const unitTypeKey = unitsToPlaceForCurrentPlayer.shift(); // Get and remove first unit type
+            addUnit(latlng, unitTypeKey, currentPlayerTeam);
+            updatePlacementUI();
+
+            if (unitsToPlaceForCurrentPlayer.length === 0) {
+                if (currentPlayerTeam === 'player1') {
+                    currentPlayerTeam = 'player2';
+                    unitsToPlaceForCurrentPlayer = [...PLACEMENT_UNITS_ORDER];
+                    updatePlacementUI();
+                    statusPanel.textContent = `${player2Data.teamName}, place your units.`;
+                } else {
+                    // Both players finished placement
+                    placementControls.style.display = 'none';
+                    startGamePlay();
+                }
+            }
+        }
+    }
+
+    function startGamePlay() {
+        gamePhase = 'playing';
+        currentPlayerTeam = 'player1'; // Player 1 (Blue) starts
+        turnCount = 1;
+        updateTurnDisplay();
+        statusPanel.textContent = `${player1Data.teamName}'s turn. Select a unit or end turn.`;
+        resetUnitsForNewTurn();
+        updateFogOfWar();
+    }
+    
+    // --- Unit Creation and Management ---
+    function addUnit(latlng, typeKey, team) {
+        const stats = UNIT_STATS[typeKey];
+        const unitId = unitIdCounter++;
+        const newUnit = {
+            id: unitId, team: team, type: typeKey, ...stats, // Spread base stats
+            currentHealth: stats.health, maxHealth: stats.health,
+            remainingMove: stats.move, actionsLeft: stats.actions,
+            latlng: latlng, marker: null, hasActedThisTurn: false
+        };
+        newUnit.marker = L.marker(latlng, { 
+            icon: createUnitLeafletIcon(newUnit), 
+            draggable: false, unitId: unitId 
+        }).addTo(map);
+        newUnit.marker.on('click', (e) => { L.DomEvent.stopPropagation(e); onUnitClick(newUnit); });
+        units.push(newUnit);
+        return newUnit;
+    }
+
+    function createUnitLeafletIcon(unit) {
+        const healthPercentage = (unit.currentHealth / unit.maxHealth) * 100;
+        const teamData = unit.team === 'player1' ? player1Data : player2Data;
+        const teamPrimaryClass = unit.team === 'player1' ? 'blue-team-primary' : 'red-team-primary';
+        
+        const healthBarColor = healthPercentage < 30 ? '#e06c75' : (healthPercentage < 60 ? '#e5c07b' : '#98c379');
+
+        let html = `
+            <div class="unit-icon-wrapper">
+                <div class="unit-svg-icon ${teamPrimaryClass}">${unit.symbol}</div>
+                <div class="health-bar-bg">
+                    <div class="health-bar" style="width: ${healthPercentage}%; background-color: ${healthBarColor};"></div>
+                </div>
+            </div>`;
+        return L.divIcon({ className: '', html: html, iconSize: [32, 38], iconAnchor: [16, 38] });
+    }
+
+    function updateUnitMarker(unit) {
+        if (unit.marker) {
+            unit.marker.setIcon(createUnitLeafletIcon(unit));
+            unit.marker.getElement()?.classList.toggle('acted-unit', unit.hasActedThisTurn);
+        }
+    }
+    
+    // --- Player and Turn Management ---
+    function getCurrentPlayerData() { return currentPlayerTeam === 'player1' ? player1Data : player2Data; }
+    function getOpponentPlayerData() { return currentPlayerTeam === 'player1' ? player2Data : player1Data; }
+    function getUnitTeamData(unit) { return unit.team === 'player1' ? player1Data : player2Data; }
+
+    window.endTurn = function() {
+        if (gamePhase !== 'playing') return;
+        deselectUnit();
+        cancelAction(); // Ensure any active targeting mode is cancelled
+        
+        currentPlayerTeam = (currentPlayerTeam === 'player1') ? 'player2' : 'player1';
+        if (currentPlayerTeam === 'player1') turnCount++; // Increment turn when P1 starts again
+        
+        updateTurnDisplay();
+        statusPanel.textContent = `${getCurrentPlayerData().teamName}'s turn. Select a unit or end turn.`;
+        resetUnitsForNewTurn();
+        updateFogOfWar();
+    }
+
+    function resetUnitsForNewTurn() {
+        units.forEach(unit => {
+            if (unit.team === currentPlayerTeam) { // Only reset for the current player's units
+                unit.remainingMove = unit.move;
+                unit.actionsLeft = unit.actions;
+                unit.hasActedThisTurn = false; // Reset this generic flag
+                updateUnitMarker(unit);
+            }
+        });
+    }
+    
+    function updateTurnDisplay() {
+        currentPlayerDisplay.textContent = getCurrentPlayerData().teamName;
+        currentPlayerDisplay.style.color = getCurrentPlayerData().teamColor;
+        turnCounterDisplay.textContent = turnCount;
+    }
+
+    // --- Unit Interaction and Actions ---
+    function onMapClick(e) {
+        if (gamePhase === 'placement') {
+            handlePlacementClick(e.latlng);
+        } else if (gamePhase === 'playing') {
+            if (currentAction === 'move_targeting' && selectedUnit) {
+                performMove(selectedUnit, e.latlng);
+            } else if (selectedUnit && currentAction === 'none') { // Click map to deselect
+                deselectUnit();
+            } else if (!selectedUnit && currentAction === 'none') {
+                 statusPanel.textContent = `${getCurrentPlayerData().teamName}'s turn. Select one ofyour units.`;
+            }
+        }
+    }
+
+    function onUnitClick(clickedUnit) {
+        if (gamePhase !== 'playing') return;
+
+        if (currentAction === 'attack_targeting' && selectedUnit) {
+            if (selectedUnit.team !== clickedUnit.team && selectedUnit.id !== clickedUnit.id) {
+                performAttack(selectedUnit, clickedUnit);
+            } else {
+                statusPanel.textContent = "Cannot target friendly unit or self. Click an enemy unit.";
+            }
+        } else { // Not in attack targeting mode, so select/deselect logic
+            if (selectedUnit === clickedUnit) { // Clicked selected unit again
+                deselectUnit();
+            } else if (clickedUnit.team === currentPlayerTeam) { // Clicked a friendly unit
+                selectUnit(clickedUnit);
+            } else { // Clicked an enemy unit (not in attack mode)
+                deselectUnit(); // Deselect current
+                statusPanel.textContent = `Enemy ${UNIT_STATS[clickedUnit.type].name} (ID ${clickedUnit.id}). Select one of your units to act.`;
+            }
+        }
+    }
+
+    function selectUnit(unit) {
+        if (selectedUnit) deselectUnit(false); // Deselect previous without clearing action status
+
+        selectedUnit = unit;
+        selectedUnit.marker.getElement()?.classList.add('selected-unit-marker');
+        displaySelectedUnitInfo();
+        updateActionButtons();
+        visualizeRanges(selectedUnit);
+        statusPanel.textContent = `${UNIT_STATS[unit.type].name} (ID ${unit.id}) selected. Choose an action.`;
+        actionInstructions.textContent = ""; // Clear previous instructions
+    }
+
+    function deselectUnit(clearStatus = true) {
+        if (selectedUnit && selectedUnit.marker) {
+            selectedUnit.marker.getElement()?.classList.remove('selected-unit-marker');
+        }
+        selectedUnit = null;
+        sUnitInfoPanel.style.display = 'none';
+        if(clearStatus) statusPanel.textContent = `${getCurrentPlayerData().teamName}'s turn. Select a unit or action.`;
+        disableActionButtons();
+        removeRangeVisualizations();
+        if (currentAction !== 'none') cancelAction(); // If an action was active, cancel it
+    }
+    
+    window.activateAction = function(actionType) {
+        if (!selectedUnit || selectedUnit.actionsLeft === 0 || selectedUnit.hasActedThisTurn) {
+            statusPanel.textContent = "Selected unit cannot perform more actions this turn.";
+            return;
+        }
+        
+        // Artillery special logic: 1 action means either move or attack, not both.
+        if (selectedUnit.type === 'artillery' && selectedUnit.actionsLeft < selectedUnit.actions ) { // Already used one action
+             statusPanel.textContent = "Artillery has already acted this turn.";
+             return;
+        }
+
+        currentAction = `${actionType}_targeting`;
+        actionInstructions.textContent = actionType === 'move' ? "Click on the map to move." : "Click an ENEMY unit to attack.";
+        
+        moveBtn.classList.toggle('active', actionType === 'move');
+        attackBtn.classList.toggle('active', actionType === 'attack');
+        cancelActionBtn.style.display = 'inline-block';
+        updateActionButtons(true); // Keep buttons enabled for cancel
+    }
+
+    window.cancelAction = function() {
+        currentAction = 'none';
+        actionInstructions.textContent = selectedUnit ? "Choose an action for the selected unit." : "";
+        moveBtn.classList.remove('active');
+        attackBtn.classList.remove('active');
+        cancelActionBtn.style.display = 'none';
+        if (selectedUnit) updateActionButtons(); else disableActionButtons();
+        removeRangeVisualizations(); // Clear targeting ranges
+        if (selectedUnit) visualizeRanges(selectedUnit); // Re-show general ranges
+    }
+    
+    function updateActionButtons(targetingActive = false) {
+        if (selectedUnit && selectedUnit.team === currentPlayerTeam && gamePhase === 'playing') {
+            let canMove = selectedUnit.actionsLeft > 0 && !selectedUnit.hasActedThisTurn;
+            let canAttack = selectedUnit.actionsLeft > 0 && !selectedUnit.hasActedThisTurn;
+
+            if (selectedUnit.type === 'artillery' && selectedUnit.actionsLeft < UNIT_STATS.artillery.actions) {
+                canMove = false; canAttack = false; // Artillery acted
+            }
+            
+            moveBtn.disabled = targetingActive ? false : !canMove;
+            attackBtn.disabled = targetingActive ? false : !canAttack;
+        } else {
+            disableActionButtons();
+        }
+    }
+    function disableActionButtons() {
+        moveBtn.disabled = true;
+        attackBtn.disabled = true;
+        moveBtn.classList.remove('active');
+        attackBtn.classList.remove('active');
+        cancelActionBtn.style.display = 'none';
+    }
+
+    function performMove(unit, targetLatLng) {
+        const distance = unit.marker.getLatLng().distanceTo(targetLatLng);
+        if (distance > unit.remainingMove) {
+            statusPanel.textContent = `Move target out of range (${(distance/1000).toFixed(1)}km > ${(unit.remainingMove/1000).toFixed(1)}km).`;
+            return;
+        }
+
+        unit.marker.setLatLng(targetLatLng);
+        unit.latlng = targetLatLng;
+        // unit.remainingMove = 0; // Or implement partial moves
+        unit.actionsLeft--;
+        if (unit.type === 'artillery' || unit.actionsLeft === 0) unit.hasActedThisTurn = true; // Artillery uses its one action
+        
+        updateUnitMarker(unit);
+        statusPanel.textContent = `${UNIT_STATS[unit.type].name} ${unit.id} moved. Actions left: ${unit.actionsLeft}.`;
+        
+        checkCapitalCapture(unit); // Check for capital capture after move
+        if (gamePhase === 'ended') return; // Game might end here
+
+        cancelAction(); // Resets mode, buttons
+        displaySelectedUnitInfo(); // Update selected unit's info
+        updateActionButtons(); // Update buttons based on remaining actions
+        visualizeRanges(unit); // Re-visualize ranges
+        updateFogOfWar();
+    }
+
+    function performAttack(attacker, target) {
+        const distance = attacker.marker.getLatLng().distanceTo(target.marker.getLatLng());
+        if (distance > attacker.attackRange) {
+            statusPanel.textContent = `Target out of attack range.`;
+            cancelAction(); return;
+        }
+
+        let damage = Math.max(1, attacker.attack - target.defense + (Math.floor(Math.random() * attacker.attack * 0.2) - (attacker.attack * 0.1))); // +/- 10% of attack power
+        damage = Math.round(damage);
+        target.currentHealth -= damage;
+        
+        attacker.actionsLeft--;
+        if (attacker.type === 'artillery' || attacker.actionsLeft === 0) attacker.hasActedThisTurn = true;
+
+        updateUnitMarker(attacker);
+        updateUnitMarker(target); // Update defender's health bar
+
+        statusPanel.textContent = `${UNIT_STATS[attacker.type].name} ${attacker.id} attacked ${UNIT_STATS[target.type].name} ${target.id} for ${damage} damage. Target health: ${target.currentHealth}.`;
+        
+        if (target.currentHealth <= 0) {
+            statusPanel.textContent += ` ${UNIT_STATS[target.type].name} ${target.id} destroyed!`;
+            map.removeLayer(target.marker);
+            units = units.filter(u => u.id !== target.id);
+            if (selectedUnit && selectedUnit.id === target.id) deselectUnit();
+        }
+        
+        cancelAction(); // Resets mode, buttons
+        if(selectedUnit && selectedUnit.id === attacker.id) { // If attacker is still selected
+            displaySelectedUnitInfo(); 
+            updateActionButtons();
+            visualizeRanges(attacker);
+        }
+        
+        checkWinCondition(); // Check for elimination win
+        updateFogOfWar();
+    }
+
+    // --- UI Display Functions ---
+    function displaySelectedUnitInfo() {
+        if (selectedUnit) {
+            sUnitInfoPanel.style.display = 'block';
+            document.getElementById('s-unit-type').textContent = UNIT_STATS[selectedUnit.type].name;
+            document.getElementById('s-unit-id').textContent = selectedUnit.id;
+            document.getElementById('s-unit-team').textContent = getUnitTeamData(selectedUnit).teamName;
+            document.getElementById('s-unit-health').textContent = `${selectedUnit.currentHealth} / ${selectedUnit.maxHealth}`;
+            document.getElementById('s-unit-attack').textContent = selectedUnit.attack;
+            document.getElementById('s-unit-defense').textContent = selectedUnit.defense;
+            document.getElementById('s-unit-move').textContent = `${(selectedUnit.move/1000).toFixed(1)}`; // Base move, remainingMove for dynamic
+            document.getElementById('s-unit-atk-range').textContent = `${(selectedUnit.attackRange/1000).toFixed(1)}`;
+            document.getElementById('s-unit-vision').textContent = `${(selectedUnit.vision/1000).toFixed(1)}`;
+            document.getElementById('s-unit-actions').textContent = `${selectedUnit.actionsLeft} / ${selectedUnit.actions}`;
+        } else {
+            sUnitInfoPanel.style.display = 'none';
+        }
+    }
+    
+    function visualizeRanges(unit) {
+        removeRangeVisualizations();
+        if (!unit || !unit.marker) return;
+        const center = unit.marker.getLatLng();
+
+        const canMove = unit.actionsLeft > 0 && !unit.hasActedThisTurn && (unit.type !== 'artillery' || unit.actionsLeft === unit.actions);
+        const canAttack = unit.actionsLeft > 0 && !unit.hasActedThisTurn && (unit.type !== 'artillery' || unit.actionsLeft === unit.actions);
+
+        if (currentAction === 'move_targeting' && canMove) {
+            rangeVisualizations.move = L.circle(center, { radius: unit.remainingMove, color: '#61afef', weight: 2, fillOpacity: 0.1, dashArray: '5,5', interactive: false }).addTo(map);
+        }
+        if (currentAction === 'attack_targeting' && canAttack) {
+            rangeVisualizations.attack = L.circle(center, { radius: unit.attackRange, color: '#e06c75', weight: 2, fillOpacity: 0.1, dashArray: '5,5', interactive: false }).addTo(map);
+        }
+        // General vision range (always show if unit selected)
+        rangeVisualizations.vision = L.circle(center, { radius: unit.vision, color: '#c678dd', weight: 1, fillOpacity: 0.05, dashArray: '2,8', interactive: false }).addTo(map);
+    }
+
+    function removeRangeVisualizations() {
+        for (let key in rangeVisualizations) {
+            if (rangeVisualizations[key]) map.removeLayer(rangeVisualizations[key]);
+            rangeVisualizations[key] = null;
+        }
+    }
+    
+    // --- Fog of War ---
+    function updateFogOfWar() {
+        if (gamePhase !== 'playing') {
+            units.forEach(u => u.marker?.getElement()?.classList.remove('fog-of-war'));
+            return;
+        }
+        const currentPlayerUnits = units.filter(u => u.team === currentPlayerTeam);
+        units.forEach(unit => {
+            if (!unit.marker || !unit.marker.getElement()) return;
+            if (unit.team === currentPlayerTeam) {
+                unit.marker.getElement().classList.remove('fog-of-war');
+            } else {
+                let spotted = false;
+                for (const friendlyUnit of currentPlayerUnits) {
+                    if (friendlyUnit.marker.getLatLng().distanceTo(unit.marker.getLatLng()) <= friendlyUnit.vision) {
+                        spotted = true; break;
+                    }
+                }
+                unit.marker.getElement().classList.toggle('fog-of-war', !spotted);
+            }
+        });
+    }
+
+    // --- Win/Loss Conditions ---
+    function checkCapitalCapture(movedUnit) {
+        const targetCapitalCoords = (movedUnit.team === 'player1') ? player2Data.capitalCoords : player1Data.capitalCoords;
+        const capturedCapitalName = (movedUnit.team === 'player1') ? player2Data.capitalName : player1Data.capitalName;
+        const winnerData = (movedUnit.team === 'player1') ? player1Data : player2Data;
+
+        if (movedUnit.marker.getLatLng().equals(L.latLng(targetCapitalCoords), 0.0001)) { // Check with a small tolerance
+            gamePhase = 'ended';
+            statusPanel.innerHTML = `<strong>GAME OVER! ${winnerData.teamName} captured ${capturedCapitalName}! ${winnerData.teamName} WINS!</strong>`;
+            disableAllGameInteraction();
+        }
+    }
+
+    function checkWinCondition() { // Elimination
+        if (gamePhase === 'ended') return; // Already ended by capital capture
+
+        const player1UnitsAlive = units.some(u => u.team === 'player1' && u.currentHealth > 0);
+        const player2UnitsAlive = units.some(u => u.team === 'player2' && u.currentHealth > 0);
+
+        if (!player1UnitsAlive && player2UnitsAlive) {
+            endGame(player2Data, "all Player 1 units destroyed");
+        } else if (!player2UnitsAlive && player1UnitsAlive) {
+            endGame(player1Data, "all Player 2 units destroyed");
+        } else if (!player1UnitsAlive && !player2UnitsAlive) {
+            endGame(null, "all units destroyed - DRAW!"); // Draw
+        }
+    }
+    
+    function endGame(winnerData, reason) {
+        gamePhase = 'ended';
+        if (winnerData) {
+            statusPanel.innerHTML = `<strong>GAME OVER! ${winnerData.teamName} WINS! Reason: ${reason}.</strong>`;
+        } else {
+            statusPanel.innerHTML = `<strong>GAME OVER! Reason: ${reason}.</strong>`;
+        }
+        disableAllGameInteraction();
+    }
+
+    function disableAllGameInteraction() {
+        disableActionButtons();
+        document.getElementById('endTurnBtn').disabled = true;
+        // Potentially remove map click listeners if desired
+    }
+
+    // --- Reset ---
+    window.confirmResetGame = function() {
+        if (confirm("Are you sure you want to reset the game and return to country selection?")) {
+            gamePhase = 'setup'; // Mark as setup to prevent issues if reset is clicked mid-logic
+            
+            // Clear units and map layers
+            units.forEach(unit => { if(unit.marker) map.removeLayer(unit.marker); });
+            units = [];
+            unitIdCounter = 0;
+            if(capitalMarkers.player1) map.removeLayer(capitalMarkers.player1);
+            if(capitalMarkers.player2) map.removeLayer(capitalMarkers.player2);
+            capitalMarkers = { player1: null, player2: null };
+            removeRangeVisualizations();
+            
+            // Destroy current map instance if it exists
+            if (map) {
+                map.remove();
+                map = null;
+            }
+
+            // Reset UI elements to initial state
+            sUnitInfoPanel.style.display = 'none';
+            placementControls.style.display = 'none';
+            actionInstructions.textContent = "";
+            document.getElementById('endTurnBtn').disabled = false; // Re-enable for new game
+            
+            // Show setup screen, hide game container
+            gameContainer.style.display = 'none';
+            setupScreen.style.display = 'flex';
+            statusPanel.textContent = "Welcome! Select countries and start the game.";
+            
+            // Re-populate selectors (in case it's needed, though they persist)
+            // player1CountrySelect.innerHTML = ''; // Clear existing options if re-populating
+            // player2CountrySelect.innerHTML = '';
+            // populateCountrySelectors(); // This might cause issues if not cleared properly. Better to just let them be.
+        }
+    }
+
+    // --- Initial Script Execution ---
+    populateCountrySelectors();
+
+})(); // End of IIFE
+</script>
+
+</body>
+</html>

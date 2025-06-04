@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Multi-Earthquake Simulation (Fixed)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        :root { /* CSS Variables for theming */ }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0;
+            display: flex; flex-direction: column; height: 100vh;
+            background-color: #f0f0f0; overflow: hidden;
+            transition: transform 0.05s ease-out;
+        }
+        .shaking { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) 2; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(1px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-2px, 0, 0); } 40%, 60% { transform: translate3d(2px, 0, 0); }
+        }
+        #map-container { flex-grow: 1; position: relative; width: 100%; }
+        #map { height: 100%; width: 100%; background-color: #aadaff; }
+        #controls-and-info {
+            display: flex; flex-direction: column; padding: 8px 12px;
+            background-color: #ffffff; border-top: 1px solid #ccc;
+            max-height: 40vh; overflow-y: auto; z-index: 1000;
+        }
+        .controls-row { display: flex; gap:15px; margin-bottom:8px; flex-wrap:wrap; }
+        .control-group { flex:1; min-width:180px; }
+        .control-group label { display:block; margin-bottom:4px; font-weight:600; font-size:0.85em; }
+        .control-group input[type="range"] { width:100%; }
+        #info-display-summary { margin-top:5px; padding-top:5px; border-top:1px dashed #ddd; }
+        .info-cards-container { display:flex; gap:8px; flex-wrap:wrap; justify-content:space-around; margin-bottom:8px;}
+        .info-card {
+            background-color:#f8f9fa; border:1px solid #e0e0e0; border-left:3px solid #007bff;
+            padding:6px 10px; border-radius:3px; font-size:0.8em; min-width:130px;
+        }
+        .info-card strong { display:block; font-size:1em; color:#333; margin-bottom:2px;}
+        .info-card span {color:#555;}
+        #city-impact-list-container { margin-top:0; }
+        #city-impact-list-container h4 { margin: 5px 0 3px 0; font-size:0.85em; color:#333; }
+        #city-impact-list { list-style-type:none; padding-left:0; font-size:0.75em; max-height:100px; overflow-y:auto; }
+        #city-impact-list li { padding:2px 4px; border-bottom:1px solid #f5f5f5; }
+        #city-impact-list li:last-child { border-bottom:none; }
+        #city-impact-list li.affected { font-weight:bold; color:#dc3545; }
+        #city-impact-list li.minor-affected { color:#ff8c00; } /* Darker Orange for better visibility */
+
+        #callout-message {
+            position:fixed; top:15px; left:50%; transform:translateX(-50%);
+            background-color:rgba(0,0,0,0.8); color:white; padding:10px 20px;
+            border-radius:5px; font-size:1.1em; font-weight:bold; text-align:center;
+            z-index:2000; opacity:0; visibility:hidden;
+            transition:opacity 0.4s ease, visibility 0s 0.4s; box-shadow:0 3px 10px rgba(0,0,0,0.25);
+        }
+        #callout-message.visible { opacity:1; visibility:visible; transition:opacity 0.4s ease, visibility 0s 0s; }
+        .epicenter-marker-icon {
+            background-color:rgba(200,0,0,0.7); border-radius:50%; width:10px; height:10px;
+            border:1.5px solid white; box-shadow:0 0 0 1.5px rgba(200,0,0,0.6), 0 0 8px rgba(200,0,0,0.7);
+            animation: pulse-epicenter-mapclick 0.6s ease-out;
+        }
+        @keyframes pulse-epicenter-mapclick {0%{transform:scale(0.7);opacity:0.4} 50%{transform:scale(1.4);opacity:1} 100%{transform:scale(1);opacity:1}}
+        .city-marker-icon {
+            background-color:rgba(60,60,60,0.6); color:white; border:1px solid #333;
+            border-radius:3px; padding:1px 2px; font-size:8px; white-space:nowrap; text-align:center;
+            cursor:default; user-select: none;
+        }
+        @media (max-width: 768px) {
+            #controls-and-info {max-height:45vh;} .controls-row {flex-direction:column; gap:8px;}
+            .info-card {min-width:110px; flex-basis:40%;} #city-impact-list {max-height:80px;}
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container"><div id="map"></div></div>
+    <div id="callout-message">Impact Detected! Simulation initiated.</div>
+    <div id="controls-and-info">
+        <div class="controls-row">
+            <div class="control-group">
+                <label>Magnitude: <span id="magnitude-value">7.2</span> M</label>
+                <input type="range" id="magnitude-slider" min="6.0" max="9.5" step="0.1" value="7.2">
+            </div>
+            <div class="control-group">
+                <label>Depth: <span id="depth-value">25</span> km</label>
+                <input type="range" id="depth-slider" min="5" max="300" step="1" value="25">
+            </div>
+        </div>
+        <div id="info-display-summary">
+            <div class="info-cards-container">
+                <div class="info-card" id="latest-epicenter-card"><strong>Latest Epicenter</strong><span>-</span></div>
+                <div class="info-card" id="latest-impact-radius-card"><strong>Latest Impact Zone</strong><span>-</span></div>
+                <div class="info-card" id="latest-total-casualties-card"><strong>Latest Est. Casualties</strong><span>-</span></div>
+            </div>
+            <div id="city-impact-list-container">
+                <h4>Global City Impacts (Illustrative - Max per city from all events):</h4>
+                <ul id="city-impact-list"><li>Click map to start simulation.</li></ul>
+            </div>
+        </div>
+        <p style="font-size:0.7em; text-align:center; margin-top:auto; padding-top:4px; color:#888;">
+            <strong>Disclaimer:</strong> Casualty estimates are highly simplified & illustrative. Max 5 concurrent events.
+        </p>
+    </div>
+
+<script>
+    const magnitudeSlider = document.getElementById('magnitude-slider');
+    const magnitudeValueDisplay = document.getElementById('magnitude-value');
+    const depthSlider = document.getElementById('depth-slider');
+    const depthValueDisplay = document.getElementById('depth-value');
+    const calloutMessageDiv = document.getElementById('callout-message');
+
+    const latestEpicenterCardSpan = document.getElementById('latest-epicenter-card').querySelector('span');
+    const latestImpactRadiusCardSpan = document.getElementById('latest-impact-radius-card').querySelector('span');
+    const latestTotalCasualtiesCardSpan = document.getElementById('latest-total-casualties-card').querySelector('span');
+    const cityImpactUl = document.getElementById('city-impact-list');
+
+    let map;
+    const MAX_CONCURRENT_SIMULATIONS = 5;
+    let activeSimulations = [];
+    let globalCityImpacts = {}; // { cityName: { casualties: number, population: number } }
+
+    const worldMajorCities = [ /* ... (Keep the same extensive list from previous version) ... */
+        { name: "Tokyo", lat: 35.6895, lng: 139.6917, population: 37400000 }, { name: "Delhi", lat: 28.7041, lng: 77.1025, population: 30290000 },
+        { name: "Shanghai", lat: 31.2304, lng: 121.4737, population: 27050000 }, { name: "Sao Paulo", lat: -23.5505, lng: -46.6333, population: 22040000 },
+        { name: "Mexico City", lat: 19.4326, lng: -99.1332, population: 21780000 }, { name: "Cairo", lat: 30.0444, lng: 31.2357, population: 20900000 },
+        { name: "Mumbai", lat: 19.0760, lng: 72.8777, population: 20410000 }, { name: "Beijing", lat: 39.9042, lng: 116.4074, population: 20380000 },
+        { name: "Dhaka", lat: 23.8103, lng: 90.4125, population: 20280000 }, { name: "Osaka", lat: 34.6937, lng: 135.5023, population: 19200000 },
+        { name: "New York", lat: 40.7128, lng: -74.0060, population: 18800000 }, { name: "Karachi", lat: 24.8607, lng: 67.0011, population: 16090000 },
+        { name: "Buenos Aires", lat: -34.6037, lng: -58.3816, population: 15180000 }, { name: "Chongqing", lat: 29.4316, lng: 106.9123, population: 15000000},
+        { name: "Istanbul", lat: 41.0082, lng: 28.9784, population: 15000000 }, { name: "Kolkata", lat: 22.5726, lng: 88.3639, population: 14850000 },
+        { name: "Manila", lat: 14.5995, lng: 120.9842, population: 13500000 }, { name: "Lagos", lat: 6.5244, lng: 3.3792, population: 14360000 },
+        { name: "Rio de Janeiro", lat: -22.9068, lng: -43.1729, population: 13450000 }, { name: "Guangzhou", lat: 23.1291, lng: 113.2644, population: 13300000 },
+        { name: "Los Angeles", lat: 34.0522, lng: -118.2437, population: 12440000 }, { name: "Moscow", lat: 55.7558, lng: 37.6173, population: 12500000 },
+        { name: "Shenzhen", lat: 22.5431, lng: 114.0579, population: 12350000 }, { name: "Lahore", lat: 31.5204, lng: 74.3587, population: 12180000 },
+        { name: "Bangalore", lat: 12.9716, lng: 77.5946, population: 12300000 }, { name: "Paris", lat: 48.8566, lng: 2.3522, population: 11000000 },
+        { name: "Jakarta", lat: -6.2088, lng: 106.8456, population: 10500000 }, { name: "Lima", lat: -12.0464, lng: -77.0428, population: 10300000 },
+        { name: "Bangkok", lat: 13.7563, lng: 100.5018, population: 10700000 }, { name: "Seoul", lat: 37.5665, lng: 126.9780, population: 9700000 },
+        { name: "London", lat: 51.5074, lng: -0.1278, population: 9300000 }, { name: "Tehran", lat: 35.6892, lng: 51.3890, population: 9100000 },
+        { name: "Ho Chi Minh City", lat:10.8231, lng:106.6297, population:9000000}, { name: "Hong Kong", lat: 22.3193, lng: 114.1694, population: 7500000 },
+        { name: "Santiago", lat: -33.4489, lng: -70.6693, population: 6150000}, { name: "Singapore", lat: 1.3521, lng: 103.8198, population: 5900000 },
+        { name: "Sydney", lat: -33.8688, lng: 151.2093, population: 5300000 }, { name: "Rome", lat: 41.9028, lng: 12.4964, population: 4300000 },
+        { name: "Cape Town", lat: -33.9249, lng: 18.4241, population: 4600000 }, { name: "San Francisco", lat: 37.7749, lng: -122.4194, population: 3300000},
+        { name: "Vancouver", lat: 49.2827, lng: -123.1207, population: 2600000}, { name: "Wellington", lat: -41.2865, lng: 174.7762, population: 420000}
+    ];
+
+    const RIPPLE_DURATION_MS = 1600; // Base duration for a ripple to animate
+
+    function initMap() {
+        map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 16, minZoom: 2, attribution: '&copy; OpenStreetMap', noWrap: true
+        }).addTo(map);
+
+        worldMajorCities.forEach(city => {
+            const cityIcon = L.divIcon({
+                className: 'city-marker-icon', html: `<div>${city.name}</div>`,
+                iconSize: [city.name.length * 4 + 8, 12], iconAnchor: [city.name.length * 2 + 4, 6]
+            });
+            L.marker([city.lat, city.lng], { icon: cityIcon, zIndexOffset: 500, interactive: false })
+             .addTo(map)
+             .bindTooltip(city.name, {permanent: false, direction: 'top', opacity: 0.8, offset: [0,-5]});
+             // Initialize globalCityImpacts for all cities
+            globalCityImpacts[city.name] = { casualties: 0, population: city.population };
+        });
+        
+        map.on('click', handleMapClick);
+        magnitudeValueDisplay.textContent = parseFloat(magnitudeSlider.value).toFixed(1);
+        depthValueDisplay.textContent = depthSlider.value;
+        updateGlobalCityImpactList();
+    }
+
+    magnitudeSlider.addEventListener('input', e => magnitudeValueDisplay.textContent = parseFloat(e.target.value).toFixed(1));
+    depthSlider.addEventListener('input', e => depthValueDisplay.textContent = e.target.value);
+
+    function handleMapClick(e) {
+        if (activeSimulations.length >= MAX_CONCURRENT_SIMULATIONS) {
+            calloutMessageDiv.textContent = `Max ${MAX_CONCURRENT_SIMULATIONS} events. Wait for one to finish.`;
+            calloutMessageDiv.classList.add('visible');
+            setTimeout(() => {
+                calloutMessageDiv.classList.remove('visible');
+                calloutMessageDiv.textContent = "Impact Detected! Simulation initiated.";
+            }, 3000);
+            return;
+        }
+        calloutMessageDiv.textContent = "Impact Detected! Simulation initiated.";
+
+        const epicenterLatlng = e.latlng;
+        const magnitude = parseFloat(magnitudeSlider.value);
+        const depth = parseInt(depthSlider.value);
+        const simId = Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+
+        const epicenterIcon = L.divIcon({ className: 'epicenter-marker-icon', iconSize: [10, 10] });
+        const epicenterMarker = L.marker(epicenterLatlng, { icon: epicenterIcon, zIndexOffset: 1000 }).addTo(map);
+        
+        document.body.classList.add('shaking');
+        setTimeout(() => document.body.classList.remove('shaking'), 400);
+        
+        calloutMessageDiv.classList.add('visible');
+        setTimeout(() => calloutMessageDiv.classList.remove('visible'), 3000);
+
+        const maxImpactRadiusKm = calculateMaxImpactRadius(magnitude);
+        
+        const simulation = {
+            id: simId, epicenter: epicenterLatlng, magnitude: magnitude, depth: depth,
+            maxImpactRadiusKm: maxImpactRadiusKm, epicenterMarker: epicenterMarker,
+            visualLayers: [], animationFrameId: null, startTime: null,
+            ripplesSpawned: 0, currentLeadingEdgeRadiusKm: 0, isComplete: false,
+            totalCasualtiesThisEvent: 0 // Track casualties for this specific event
+        };
+        activeSimulations.push(simulation);
+
+        latestEpicenterCardSpan.textContent = `${epicenterLatlng.lat.toFixed(2)}, ${epicenterLatlng.lng.toFixed(2)}`;
+        latestImpactRadiusCardSpan.textContent = `${maxImpactRadiusKm.toFixed(0)} km`;
+        latestTotalCasualtiesCardSpan.textContent = `Calculating...`; // Will be updated by the loop
+
+        startSingleSimulationLoop(simulation);
+    }
+
+    function calculateMaxImpactRadius(magnitude) {
+        return 60 * Math.pow(Math.max(0, magnitude - 5.8), 2.1);
+    }
+    
+    function startSingleSimulationLoop(sim) {
+        const RIPPLE_COUNT = 5; const RIPPLE_SPREAD_MS = 180;
+        const MAX_VISUAL_RADIUS_M = sim.maxImpactRadiusKm * 1000 * 1.05;
+        // Speed up propagation for quicker results visually
+        const OVERALL_PROPAGATION_SPEED_KM_PER_SEC = (0.1 + (sim.magnitude - 6) * 0.05) * 1.5; // Increased base and scaling
+
+        const damageColors = [ /* ... (same as before) ... */
+            { radiusFactor: 0.15, color: `rgba(255,0,0,${0.1 + sim.magnitude * 0.02})` },
+            { radiusFactor: 0.4, color: `rgba(255,165,0,${0.08 + sim.magnitude * 0.015})` },
+            { radiusFactor: 0.8, color: `rgba(255,255,0,${0.06 + sim.magnitude * 0.01})` }
+        ];
+        damageColors.sort((a,b) => b.radiusFactor - a.radiusFactor).forEach(zone => {
+            const zoneRadM = sim.maxImpactRadiusKm * 1000 * zone.radiusFactor;
+            if (zoneRadM > 0) {
+                const dCircle = L.circle(sim.epicenter, {radius: zoneRadM, fillColor: zone.color, fillOpacity:1, weight:0, interactive:false, pane:'overlayPane'}).addTo(map);
+                sim.visualLayers.push(dCircle);
+            }
+        });
+
+        sim.startTime = performance.now();
+
+        function animateEvent() {
+            if (sim.isComplete) return;
+
+            const elapsedMs = performance.now() - sim.startTime;
+            sim.currentLeadingEdgeRadiusKm = Math.min(sim.maxImpactRadiusKm, elapsedMs * OVERALL_PROPAGATION_SPEED_KM_PER_SEC / 1000);
+            
+            processImpactsForSimulation(sim); // This will update sim.totalCasualtiesThisEvent
+
+            // Update latest event card if this is the latest simulation
+            const latestActiveSim = activeSimulations[activeSimulations.length -1];
+            if (latestActiveSim && sim.id === latestActiveSim.id) {
+                 latestTotalCasualtiesCardSpan.textContent = `~${sim.totalCasualtiesThisEvent.toLocaleString()}`;
+            }
+
+
+            if (sim.ripplesSpawned < RIPPLE_COUNT && elapsedMs > sim.ripplesSpawned * RIPPLE_SPREAD_MS) {
+                createRippleForSimulation(sim, MAX_VISUAL_RADIUS_M, RIPPLE_DURATION_MS);
+                sim.ripplesSpawned++;
+            }
+            
+            // Check if the conceptual wave has reached its max radius AND all visual ripples for THIS event are likely done
+            const allRipplesPotentiallyDone = elapsedMs > (sim.ripplesSpawned * RIPPLE_SPREAD_MS + RIPPLE_DURATION_MS);
+
+            if (sim.currentLeadingEdgeRadiusKm < sim.maxImpactRadiusKm || (sim.ripplesSpawned < RIPPLE_COUNT && !allRipplesPotentiallyDone) ) {
+                sim.animationFrameId = requestAnimationFrame(animateEvent);
+            } else {
+                sim.isComplete = true;
+                // More generous cleanup delay
+                setTimeout(() => {
+                    sim.visualLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+                    sim.visualLayers = [];
+                    if (map.hasLayer(sim.epicenterMarker)) map.removeLayer(sim.epicenterMarker);
+                    activeSimulations = activeSimulations.filter(s => s.id !== sim.id);
+                    // Update global list one last time in case this was the only event affecting some cities
+                    updateGlobalCityImpactList(); 
+                }, RIPPLE_DURATION_MS + 2000); // Wait for ripple duration + 2s
+            }
+        }
+        sim.animationFrameId = requestAnimationFrame(animateEvent);
+    }
+
+    function createRippleForSimulation(sim, maxRadiusM, durationMs) { /* ... (same as before) ... */
+        const ripple = L.circle(sim.epicenter, {
+            radius: 0, color: `rgba(0,100,200, ${0.25 + Math.min(0.4, (sim.magnitude-6)*0.1)})`,
+            weight: 1 + Math.min(1.2, (sim.magnitude-6)*0.3), fill:false, opacity:0.65, interactive:false, pane:'shadowPane'
+        }).addTo(map);
+        sim.visualLayers.push(ripple);
+        
+        const rStartTime = performance.now();
+        function animateRippleFrame(ts) {
+            const el = ts - rStartTime; let prog = el / durationMs;
+            if (prog < 1 && map.hasLayer(ripple) && !sim.isComplete) { // Also check if sim is complete
+                ripple.setRadius(prog * maxRadiusM);
+                ripple.setStyle({ opacity: 0.65 * (1 - Math.pow(prog, 1.5)) });
+                requestAnimationFrame(animateRippleFrame);
+            } else {
+                if (map.hasLayer(ripple)) map.removeLayer(ripple);
+            }
+        }
+        requestAnimationFrame(animateRippleFrame);
+    }
+    
+    function processImpactsForSimulation(sim) {
+        const energyFactor = Math.pow(10, 1.5 * (sim.magnitude - 6.0));
+        let tsunamigenicEfficiency = 0.05;
+        if (sim.depth < 30) tsunamigenicEfficiency = 1.2;
+        else if (sim.depth < 70) tsunamigenicEfficiency = 0.8;
+        else if (sim.depth < 150) tsunamigenicEfficiency = 0.2;
+
+        let currentEventTotalCasualties = 0;
+        let cityImpactChangedInThisStep = false;
+
+        worldMajorCities.forEach(city => {
+            const cityLatlng = L.latLng(city.lat, city.lng);
+            const distanceKm = sim.epicenter.distanceTo(cityLatlng) / 1000;
+            
+            if (distanceKm < sim.currentLeadingEdgeRadiusKm) {
+                const proximityFactor = Math.pow(Math.max(0, 1 - (distanceKm / (sim.maxImpactRadiusKm + 0.1))), 2.2); // +0.1 to avoid div by 0
+                let impactIntensity = energyFactor * tsunamigenicEfficiency * proximityFactor;
+                let affectedPercentage = 0;
+
+                if (impactIntensity > 80)      affectedPercentage = 0.02 + Math.min(0.10, (impactIntensity - 80) / 6000);
+                else if (impactIntensity > 15) affectedPercentage = 0.003 + Math.min(0.017, (impactIntensity - 15) / 1000);
+                else if (impactIntensity > 0.5)affectedPercentage = Math.min(0.003, impactIntensity / 3000);
+                
+                affectedPercentage = Math.min(affectedPercentage, 0.15);
+                let cityCasualtiesThisEventForThisCity = Math.floor(city.population * affectedPercentage);
+                
+                currentEventTotalCasualties += cityCasualtiesThisEventForThisCity;
+
+                // Update global impacts if this event is worse for this city
+                if (cityCasualtiesThisEventForThisCity > (globalCityImpacts[city.name]?.casualties || 0) ) {
+                    globalCityImpacts[city.name] = { 
+                        casualties: cityCasualtiesThisEventForThisCity, 
+                        population: city.population // Store population for styling later
+                    };
+                    cityImpactChangedInThisStep = true;
+                }
+            }
+        });
+
+        sim.totalCasualtiesThisEvent = currentEventTotalCasualties; // Store on the sim object
+
+        if (cityImpactChangedInThisStep) {
+            updateGlobalCityImpactList();
+        }
+    }
+
+    function updateGlobalCityImpactList() {
+        cityImpactUl.innerHTML = '';
+        let affectedCitiesInList = 0;
+
+        const sortedCities = Object.entries(globalCityImpacts)
+            .map(([name, data]) => ({ name, casualties: data.casualties, population: data.population }))
+            .filter(c => c.casualties > 0)
+            .sort((a, b) => b.casualties - a.casualties);
+
+        sortedCities.forEach(item => {
+            affectedCitiesInList++;
+            const li = document.createElement('li');
+            li.textContent = `${item.name}: ~${item.casualties.toLocaleString()}`;
+            // Use item.population for styling threshold
+            li.className = item.casualties > item.population * 0.005 ? 'affected' : 'minor-affected';
+            cityImpactUl.appendChild(li);
+        });
+
+        if (affectedCitiesInList === 0) {
+            cityImpactUl.innerHTML = '<li>No major cities currently estimated with significant casualties.</li>';
+        }
+    }
+
+    initMap();
+</script>
+</body>
+</html>

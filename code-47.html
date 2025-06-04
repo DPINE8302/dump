@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Inspired by your CSS variables */
+            --color-bg-main: #0b0b0b;
+            --color-text-main: #f6f6f6;
+            --color-bg-terminal: #141414;
+            --color-terminal-highlight: #cba6f7; /* Purpleish for links */
+            --color-terminal-secondary-text: #a0a0a0; /* For less prominent text if needed */
+            --color-scrollbar-thumb: #555;
+            --color-scrollbar-track: #2a2a2c;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        body {
+            font-family: 'DM Mono', 'SFMono-Regular', Consolas, 'Menlo', 'Liberation Mono', Courier, monospace;
+            background-color: var(--color-bg-main);
+            color: var(--color-text-main);
+            margin: 0;
+            min-height: 100vh;
+            display: flex; /* For centering the terminal box */
+            align-items: center; /* For centering the terminal box */
+            justify-content: center; /* For centering the terminal box */
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        .terminal-output-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-output-container::-webkit-scrollbar-track {
+            background: var(--color-scrollbar-track);
+        }
+        .terminal-output-container::-webkit-scrollbar-thumb {
+            background: var(--color-scrollbar-thumb);
+            border-radius: 4px;
+        }
+        .terminal-output-container::-webkit-scrollbar-thumb:hover {
+            background: #6b6b6b;
+        }
+        .terminal-output-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: inherit; /* Inherits --color-text-main */
+            width: 100%;
+            /* caret-color: var(--color-text-main); Now handled by Tailwind caret-color */
+        }
+
+        .blinking-cursor {
+            background-color: var(--color-text-main); /* Solid block cursor */
+            animation: blink 1s step-end infinite;
+            display: inline-block;
+            width: 0.6em; /* DM Mono is a bit wider */
+            height: 1.1em;
+            margin-left: 0.1em;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+            from, to { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .output-link {
+            color: var(--color-terminal-highlight);
+            text-decoration: none;
+            text-underline-offset: 3px;
+        }
+        .output-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="text-sm md:text-base"> {/* Base font size, slightly smaller on mobile */}
+    <div id="root" class="w-full h-full flex items-center justify-center"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- CONFIGURATION ---
+        const PROMPT_SYMBOL = "❯";
+        const TYPING_SPEED = 45; // Slightly adjusted for DMMono readability
+        const INITIAL_GREETING = `Connected. Type 'help' for commands.`;
+
+        // --- DATA (Customize this section with your details) ---
+        const aboutMeContent = `
+[Your Name/Nickname]
+[Your Role - e.g., Software Engineer, Designer]
+
+Passionate about crafting thoughtful and performant digital experiences.
+Currently exploring [Your Interests/Tech]. This terminal is a small
+showcase of projects and a testament to my love for clean interfaces.
+
+When not at the keyboard, I'm often [Your Hobbies].
+        `.trim();
+
+        const projectsContent = [
+            { name: "Project Cygnus", description: "Next-gen data visualization platform. React, D3, Python.", link: "#" },
+            { name: "Nova UI Kit", description: "Minimalist component library. TypeScript, Stitches.", link: "#" },
+            { name: "Orion CLI", description: "Productivity tools for developers. Go.", link: "https://github.com/yourusername/orion-cli" },
+            { name: "Portfolio_Terminal", description: "This interactive interface. React, Tailwind.", link: "https://github.com/yourusername/terminal-portfolio" }
+        ];
+
+        const photosContent = {
+            intro: "Photography | A selection of my work:",
+            linkText: "gallery.example.com",
+            url: "https://unsplash.com/" // Replace
+        };
+
+        const filmContent = {
+            intro: "Film & Motion | Short projects and experiments:",
+            linkText: "vimeo.com/yourprofile",
+            url: "https://vimeo.com/" // Replace
+        };
+
+        const contactContent = {
+            email: "hello@yourdomain.com",
+            linkedin: "linkedin.com/in/yourprofile",
+            github: "github.com/yourusername",
+        };
+        const contactLinks = { // For direct linking
+            email: `mailto:${contactContent.email}`,
+            linkedin: `https://www.${contactContent.linkedin}`,
+            github: `https://www.${contactContent.github}`
+        }
+
+        // --- TYPEWRITER COMPONENT ---
+        function Typewriter({ text, speed = TYPING_SPEED, onFinished, isHtml = false }) {
+            const [displayText, setDisplayText] = useState("");
+            const currentIndex = useRef(0);
+            const currentTextRef = useRef(text);
+
+            useEffect(() => {
+                currentTextRef.current = text;
+                setDisplayText("");
+                currentIndex.current = 0;
+            }, [text]);
+
+            useEffect(() => {
+                if (currentIndex.current < currentTextRef.current.length) {
+                    const timer = setTimeout(() => {
+                        setDisplayText((prev) => prev + currentTextRef.current[currentIndex.current]);
+                        currentIndex.current += 1;
+                    }, speed);
+                    return () => clearTimeout(timer);
+                } else if (onFinished) {
+                    onFinished();
+                }
+            }, [displayText, speed, onFinished]);
+
+            if (isHtml) {
+                return <div dangerouslySetInnerHTML={{ __html: displayText.replace(/\n/g, '<br/>') }} />;
+            }
+            // Preserve spaces for pre-wrap effect
+            return <>{displayText.split('\n').map((line, i) => <div key={i}>{line || ' '}</div>)}</>;
+        }
+
+        // --- MAIN TERMINAL COMPONENT ---
+        function Terminal() {
+            const [history, setHistory] = useState([{ 
+                id: Date.now(), 
+                type: 'output', 
+                content: INITIAL_GREETING,
+                isTyping: true 
+            }]);
+            const [inputValue, setInputValue] = useState("");
+            const [commandHistory, setCommandHistory] = useState([]);
+            const [commandHistoryIndex, setCommandHistoryIndex] = useState(-1);
+
+            const inputRef = useRef(null);
+            const scrollRef = useRef(null);
+
+            const dynamicPrompt = `${PROMPT_SYMBOL} `;
+
+            useEffect(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }
+            }, [history]);
+
+            useEffect(() => {
+                if (!history.some(item => item.type === 'output' && item.isTyping)) {
+                    inputRef.current?.focus();
+                }
+            }, [history]);
+
+            const handleInputChange = (e) => {
+                setInputValue(e.target.value);
+            };
+
+            const handleCommandSubmit = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const commandInput = inputValue.trim();
+                    if (commandInput === "") return;
+
+                    const newHistoryEntry = { id: Date.now(), type: 'input', content: `${dynamicPrompt}${commandInput}` };
+                    setInputValue("");
+                    setCommandHistory(prev => [commandInput, ...prev].slice(0, 20));
+                    setCommandHistoryIndex(-1);
+
+                    processCommand(commandInput, [...history, newHistoryEntry]);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (commandHistory.length > 0) {
+                        const newIndex = Math.min(commandHistoryIndex + 1, commandHistory.length - 1);
+                        setCommandHistoryIndex(newIndex);
+                        setInputValue(commandHistory[newIndex] || "");
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (commandHistoryIndex > -1) {
+                        const newIndex = Math.max(commandHistoryIndex - 1, -1);
+                        setCommandHistoryIndex(newIndex);
+                        setInputValue(newIndex === -1 ? "" : (commandHistory[newIndex] || ""));
+                    }
+                }
+            };
+
+            const processCommand = (commandInput, currentHistory) => {
+                let outputContent = "";
+                let isHtmlOutput = false;
+                const [cmd, ...args] = commandInput.toLowerCase().split(/\s+/);
+
+                switch (cmd) {
+                    case 'help':
+                        outputContent = `Available commands:
+  about         Who I am
+  projects      My work
+  photos        Photography link
+  film          Film/video links
+  contact       Get in touch
+  clear         Clear screen
+  echo <text>   Prints text`;
+                        break;
+                    case 'about':
+                        outputContent = aboutMeContent;
+                        break;
+                    case 'projects':
+                        outputContent = "Projects:\n" + projectsContent.map(p => 
+                            `  ${p.name} - ${p.description}` + 
+                            (p.link !== "#" ? ` <a href="${p.link}" target="_blank" class="output-link">[${p.link.startsWith("https://github") ? "github" : "view"}]</a>` : "")
+                        ).join('\n');
+                        isHtmlOutput = true;
+                        break;
+                    case 'photos':
+                        outputContent = `${photosContent.intro}\n  <a href="${photosContent.url}" target="_blank" class="output-link">${photosContent.linkText}</a>`;
+                        isHtmlOutput = true;
+                        break;
+                    case 'film':
+                        outputContent = `${filmContent.intro}\n  <a href="${filmContent.url}" target="_blank" class="output-link">${filmContent.linkText}</a>`;
+                        isHtmlOutput = true;
+                        break;
+                    case 'contact':
+                        outputContent = `Contact:
+  Email:    <a href="${contactLinks.email}" class="output-link">${contactContent.email}</a>
+  LinkedIn: <a href="${contactLinks.linkedin}" target="_blank" class="output-link">${contactContent.linkedin}</a>
+  GitHub:   <a href="${contactLinks.github}" target="_blank" class="output-link">${contactContent.github}</a>`;
+                        isHtmlOutput = true;
+                        break;
+                    case 'clear':
+                        setHistory([]);
+                        setTimeout(() => {
+                             setHistory([{ 
+                                id: Date.now(), type: 'output', content: INITIAL_GREETING, isTyping: true 
+                            }]);
+                        }, 0);
+                        return;
+                    case 'echo':
+                        outputContent = args.join(" ") || "[empty echo]";
+                        break;
+                    default:
+                        outputContent = `Error: command not found: ${cmd}. \nType 'help' for options.`;
+                }
+                
+                setHistory([...currentHistory, { id: Date.now() + 1, type: 'output', content: outputContent, isTyping: true, isHtml: isHtmlOutput }]);
+            };
+
+            const handleTerminalClick = () => {
+                inputRef.current?.focus();
+            };
+
+            const onTypewriterFinish = (itemId) => {
+                setHistory(prevHistory => 
+                    prevHistory.map(item => 
+                        item.id === itemId ? { ...item, isTyping: false } : item
+                    )
+                );
+            };
+
+            const isAnyOutputTyping = history.some(item => item.type === 'output' && item.isTyping);
+
+            return (
+                // Terminal Box: Mimics .terminal style from your CSS example
+                <div 
+                    className="w-11/12 max-w-2xl lg:max-w-3xl h-[75vh] max-h-[600px] md:max-h-[700px] 
+                               bg-[var(--color-bg-terminal)] 
+                               shadow-[inset_0_0_0_1px_var(--color-text-main)] rounded-lg 
+                               p-4 md:p-6 flex flex-col overflow-hidden cursor-text"
+                    onClick={handleTerminalClick}
+                >
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto terminal-output-container pr-2 space-y-1.5">
+                        {history.map(item => (
+                            <div key={item.id} className="whitespace-pre-wrap break-words">
+                                {item.type === 'input' ? (
+                                    // Input text slightly dimmer for differentiation
+                                    <span className="opacity-75">{item.content}</span> 
+                                ) : (
+                                    item.isTyping ? (
+                                        <Typewriter 
+                                            text={item.content} 
+                                            speed={TYPING_SPEED}
+                                            onFinished={() => onTypewriterFinish(item.id)}
+                                            isHtml={item.isHtml}
+                                        />
+                                    ) : (
+                                        item.isHtml ? (
+                                            <div dangerouslySetInnerHTML={{ __html: item.content.replace(/\n/g, '<br/>') }} />
+                                        ) : (
+                                             item.content.split('\n').map((line, i) => <div key={i}>{line || ' '}</div>)
+                                        )
+                                    )
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    {!isAnyOutputTyping && (
+                         <div className="flex items-center mt-2 shrink-0">
+                            <span className="mr-2 text-[var(--color-terminal-highlight)]">{dynamicPrompt}</span>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyDown={handleCommandSubmit}
+                                className="terminal-input flex-grow caret-[var(--color-text-main)]" // Tailwind class for caret color
+                                autoFocus
+                                spellCheck="false"
+                                autoComplete="off"
+                                aria-label="Terminal input"
+                            />
+                         </div>
+                    )}
+                    {!isAnyOutputTyping && <span className="blinking-cursor"></span>}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Terminal />);
+    </script>
+</body>
+</html>

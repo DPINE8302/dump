@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Voyager: An Interactive Journey Through Space</title>
+    <style>
+        /* CSS Reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000011; /* Deep space blue */
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Behind all content */
+        }
+
+        /* Header & Navigation */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 10, 30, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(173, 216, 230, 0.3); /* Light blue glow */
+        }
+
+        header .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #7DF9FF; /* Electric Blue */
+            text-shadow: 0 0 5px #7DF9FF;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+        }
+
+        nav ul li {
+            margin-left: 20px;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: #f0f0f0;
+            font-weight: 500;
+            padding: 0.5rem 0.8rem;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        nav ul li a:hover, nav ul li a.active {
+            background-color: #7DF9FF;
+            color: #000011;
+            text-shadow: none;
+        }
+        
+        /* Mobile Menu Button */
+        .menu-toggle {
+            display: none; /* Hidden by default, shown on small screens */
+            background: none;
+            border: none;
+            color: #f0f0f0;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+
+        /* Main Content Area */
+        main {
+            padding-top: 80px; /* Account for fixed header */
+        }
+
+        section {
+            padding: 60px 5%;
+            min-height: 80vh;
+            border-bottom: 1px dashed rgba(173, 216, 230, 0.2);
+        }
+        section:last-child {
+            border-bottom: none;
+        }
+
+        h1, h2, h3 {
+            color: #9FE2BF; /* Seafoam Green */
+            margin-bottom: 1rem;
+            text-shadow: 0 0 3px #9FE2BF;
+        }
+        h1 { font-size: 2.8rem; text-align: center; margin-bottom: 2rem; }
+        h2 { font-size: 2.2rem; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.8rem; }
+
+        p, li {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #cccccc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Hero Section */
+        #hero {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            height: 100vh; /* Full viewport height */
+            background: linear-gradient(rgba(0,0,20,0.5), rgba(0,0,20,0.8));
+        }
+        #hero h1 {
+            font-size: 3.5rem;
+            color: #FFD700; /* Gold */
+            animation: pulseGlow 2s infinite alternate;
+        }
+        @keyframes pulseGlow {
+            from { text-shadow: 0 0 5px #FFD700, 0 0 10px #FFD700; }
+            to { text-shadow: 0 0 15px #FFD700, 0 0 25px #FF8C00; } /* Gold to orange */
+        }
+        #hero p {
+            font-size: 1.4rem;
+            color: #f0f0f0;
+            max-width: 700px;
+        }
+
+        /* Solar System Section */
+        .planets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .planet-card {
+            background: rgba(20, 20, 50, 0.7);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #7DF9FF;
+        }
+        .planet-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(125, 249, 255, 0.3);
+        }
+        .planet-card .planet-emoji {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        .planet-info {
+            display: none; /* Hidden by default */
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .planet-info p { font-size: 0.95rem; }
+
+        /* Interactive Zone: Quiz & Facts */
+        .interactive-item {
+            background: rgba(30, 30, 60, 0.6);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 5px solid #FF69B4; /* Hot Pink */
+        }
+        .interactive-item button {
+            background-color: #FF69B4;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        .interactive-item button:hover {
+            background-color: #FF1493; /* Deeper Pink */
+        }
+        #quiz-question, #fact-display, #celestial-object-display {
+            margin-bottom: 1rem;
+            font-style: italic;
+            color: #f0f0f0;
+        }
+        .quiz-options button {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            background-color: #5F9EA0; /* Cadet Blue */
+        }
+         .quiz-options button:hover {
+            background-color: #4682B4; /* Steel Blue */
+        }
+        #quiz-result {
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+
+        /* Rocket Launch */
+        #launch-pad {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        #rocket {
+            font-size: 3rem;
+            display: inline-block;
+            transition: transform 1.5s ease-out;
+        }
+        #rocket.launched {
+            transform: translateY(-300px) rotate(15deg) scale(0.5);
+            opacity: 0;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            background: rgba(10, 10, 30, 0.9);
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        footer a {
+            color: #9FE2BF;
+        }
+        
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mt-2 { margin-top: 2rem; }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header .logo { font-size: 1.5rem; }
+            nav ul {
+                display: none; /* Hide nav links */
+                flex-direction: column;
+                position: absolute;
+                top: 70px; /* Below header */
+                left: 0;
+                width: 100%;
+                background: rgba(10, 10, 30, 0.95);
+            }
+            nav ul.active {
+                display: flex; /* Show when active */
+            }
+            nav ul li {
+                margin: 0;
+                width: 100%;
+                text-align: center;
+            }
+            nav ul li a {
+                display: block;
+                padding: 1rem;
+                border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+            }
+            .menu-toggle {
+                display: block; /* Show hamburger icon */
+            }
+
+            #hero h1 { font-size: 2.5rem; }
+            #hero p { font-size: 1.1rem; }
+            h1 { font-size: 2.2rem; }
+            h2 { font-size: 1.8rem; }
+
+            .planets-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+            .planet-card .planet-emoji { font-size: 3rem; }
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+
+    <header>
+        <div class="logo">Cosmic Voyager</div>
+        <nav>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">&#9776;</button>
+            <ul id="navLinks">
+                <li><a href="#hero" class="active">Home</a></li>
+                <li><a href="#introduction">Intro</a></li>
+                <li><a href="#solar-system">Solar System</a></li>
+                <li><a href="#stars">Stars</a></li>
+                <li><a href="#galaxies">Galaxies & Beyond</a></li>
+                <li><a href="#interactive-zone">Interactive Zone</a></li>
+                <li><a href="#contemplation">Cosmic Contemplation</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero">
+            <h1>Explore the Cosmos</h1>
+            <p>Embark on an interactive journey through the wonders of space, from our solar system to the farthest reaches of the universe. Prepare to be amazed!</p>
+            <div id="launch-pad" class="mt-2">
+                <span id="rocket">🚀</span><br>
+                <button id="launchButton" class="interactive-item button" style="background-color: #FFD700; color: #000011;">Launch Your Discovery!</button>
+            </div>
+        </section>
+
+        <section id="introduction" class="container">
+            <h2>Welcome, Star Traveler!</h2>
+            <p>Astronomy is the natural science that studies celestial objects and phenomena. It uses mathematics, physics, and chemistry in order to explain their origin and evolution. Objects of interest include planets, moons, stars, nebulae, galaxies, and comets. Phenomena include supernova explosions, gamma ray bursts, quasars, blazars, pulsars, and cosmic microwave background radiation.</p>
+            <p>This website is your portal to understanding these incredible cosmic concepts. Let's begin our voyage!</p>
+        </section>
+
+        <section id="solar-system">
+            <div class="container">
+                <h2>Our Solar System: A Neighborhood Tour</h2>
+                <p>Explore the planets and other fascinating bodies that orbit our Sun. Click on each celestial body to learn more!</p>
+                <div class="planets-grid">
+                    <!-- Planet data will be injected by JavaScript -->
+                </div>
+                <div id="planet-details" class="interactive-item mt-2" style="display:none;">
+                    <h3 id="planet-detail-name"></h3>
+                    <p id="planet-detail-info"></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="stars" class="container">
+            <h2>The Stellar Nursery: Birth, Life, and Death of Stars</h2>
+            <p>Stars are the building blocks of galaxies, giant balls of plasma powered by nuclear fusion. Their life cycles are dramatic and diverse.</p>
+            <h3>Stellar Lifecycle:</h3>
+            <ul>
+                <li><strong>Nebulae:</strong> Stars are born from vast clouds of gas and dust called nebulae. Gravity causes these clouds to collapse.</li>
+                <li><strong>Protostar:</strong> A dense core forms, heating up. If it becomes hot and dense enough, nuclear fusion begins.</li>
+                <li><strong>Main Sequence:</strong> The star enters a long period of stability, fusing hydrogen into helium (like our Sun).</li>
+                <li><strong>Red Giant/Supergiant:</strong> When hydrogen fuel depletes, stars expand. Smaller stars become red giants, larger ones red supergiants.</li>
+                <li><strong>End Stages:</strong>
+                    <ul>
+                        <li><em>Low-mass stars (like the Sun):</em> Shed outer layers to form a planetary nebula, leaving behind a white dwarf, which eventually cools into a black dwarf.</li>
+                        <li><em>High-mass stars:</em> Explode in a supernova, scattering elements into space. The core can become a neutron star or, for the most massive stars, a black hole.</li>
+                    </ul>
+                </li>
+            </ul>
+            <p>Our Sun is a medium-sized star, currently in its main sequence phase.</p>
+        </section>
+
+        <section id="galaxies" class="container">
+            <h2>Galaxies & Beyond: The Grand Cosmic Tapestry</h2>
+            <p>Galaxies are vast systems of stars, gas, dust, and dark matter, bound together by gravity. Our home galaxy is the Milky Way.</p>
+            <h3>Types of Galaxies:</h3>
+            <ul>
+                <li><strong>Spiral Galaxies (like the Milky Way):</strong> Have a central bulge and spiral arms.</li>
+                <li><strong>Elliptical Galaxies:</strong> Smooth, oval-shaped, containing older stars.</li>
+                <li><strong>Irregular Galaxies:</strong> No distinct shape, often resulting from galactic collisions.</li>
+            </ul>
+            <h3>Cosmology: The Study of the Universe</h3>
+            <p>Cosmology explores the origin, evolution, and ultimate fate of the universe.</p>
+            <ul>
+                <li><strong>The Big Bang Theory:</strong> The prevailing model suggests the universe began from an extremely hot, dense state about 13.8 billion years ago and has been expanding ever since.</li>
+                <li><strong>Dark Matter & Dark Energy:</strong> Mysterious components that make up most of the universe's mass-energy content. Dark matter provides extra gravity, while dark energy accelerates cosmic expansion.</li>
+                <li><strong>Cosmic Microwave Background:</strong> Faint radiation leftover from the Big Bang, providing crucial evidence for the theory.</li>
+            </ul>
+        </section>
+
+        <section id="interactive-zone" class="container">
+            <h2>Interactive Zone: Test Your Cosmic Knowledge!</h2>
+            
+            <div class="interactive-item">
+                <h3>Celestial Object of the Day</h3>
+                <div id="celestial-object-display">Click the button to see today's featured object!</div>
+                <button id="newCelestialObjectButton">Show Me!</button>
+            </div>
+
+            <div class="interactive-item">
+                <h3>Random Cosmic Fact</h3>
+                <div id="fact-display">Click the button for an amazing space fact!</div>
+                <button id="newFactButton">Give Me a Fact!</button>
+            </div>
+
+            <div class="interactive-item">
+                <h3>Mini Cosmic Quiz</h3>
+                <div id="quiz-question"></div>
+                <div class="quiz-options" id="quiz-options"></div>
+                <button id="nextQuizQuestionButton">Next Question</button>
+                <div id="quiz-result"></div>
+                <div id="quiz-score" style="margin-top:10px; font-weight: bold;"></div>
+            </div>
+        </section>
+        
+        <section id="contemplation" class="container">
+            <h2>Cosmic Contemplation Corner</h2>
+            <p>Look up at the night sky. What do you feel? The universe is vast, mysterious, and beautiful. It invites us to ponder our place within it, the origins of everything, and the possibilities that lie beyond our world.</p>
+            <blockquote>
+                "Somewhere, something incredible is waiting to be known." - Carl Sagan
+            </blockquote>
+            <p>Take a moment to reflect on these cosmic wonders:</p>
+            <ul>
+                <li>The sheer scale of the universe: billions of galaxies, each with billions of stars.</li>
+                <li>The lifecycle of stars, creating the elements that make up planets and life.</li>
+                <li>The mysteries of dark matter and dark energy that shape the cosmos.</li>
+                <li>The ongoing search for life beyond Earth.</li>
+            </ul>
+            <p>Astronomy not only expands our knowledge but also our sense of wonder and perspective. It's a journey of discovery that connects us to something far greater than ourselves.</p>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>&copy; <span id="currentYear"></span> Cosmic Voyager. Designed with wonder by an AI. Explore responsibly!</p>
+        <p>Content inspired by the vastness of astronomical knowledge.</p>
+    </footer>
+
+    <script>
+        // Starfield Canvas Animation
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+
+        function setCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        setCanvasSize();
+        window.addEventListener('resize', setCanvasSize);
+
+        let stars = [];
+        const numStars = 200;
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < numStars; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5 + 0.5, // Star size
+                    alpha: Math.random() * 0.5 + 0.5, // Star brightness
+                    twinkleSpeed: Math.random() * 0.015 + 0.005, // Twinkle speed
+                    twinkleDirection: 1
+                });
+            }
+        }
+        initStars(); // Initialize stars on load
+
+        function drawStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000011'; // Match body background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.fill();
+
+                // Twinkle effect
+                star.alpha += star.twinkleSpeed * star.twinkleDirection;
+                if (star.alpha >= 1 || star.alpha <= 0.3) {
+                    star.twinkleDirection *= -1;
+                }
+
+                // Move stars subtly (optional parallax effect can be added here)
+                star.y -= 0.05; // Slow upward drift
+                if (star.y < 0) { // Reset star if it goes off screen
+                    star.y = canvas.height;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+
+            requestAnimationFrame(drawStars);
+        }
+        drawStars();
+        window.addEventListener('resize', () => { // Reinitialize stars on resize for proper distribution
+            setCanvasSize();
+            initStars();
+        });
+
+
+        // Smooth Scrolling & Active Nav Link
+        const navLinks = document.querySelectorAll('nav ul li a');
+        const sections = document.querySelectorAll('main section');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // For mobile menu: close it after click
+                if(document.getElementById('navLinks').classList.contains('active')) {
+                    document.getElementById('navLinks').classList.remove('active');
+                }
+            });
+        });
+        
+        window.addEventListener('scroll', () => {
+            let currentSection = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 85) { // Adjusted for header height
+                    currentSection = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').substring(1) === currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Mobile Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const mainNav = document.getElementById('navLinks');
+        menuToggle.addEventListener('click', () => {
+            mainNav.classList.toggle('active');
+        });
+
+        // Planet Data & Interaction
+        const planets = [
+            { name: "Mercury", emoji: "☄️", info: "The smallest planet in our Solar System and closest to the Sun. It has a cratered surface and extreme temperature variations." },
+            { name: "Venus", emoji: "♀️", info: "Earth's 'sister planet' due to similar size, but with a thick, toxic atmosphere and runaway greenhouse effect, making it the hottest planet." },
+            { name: "Earth", emoji: "🌍", info: "Our home! The only known planet to harbor life, with liquid water on its surface and a protective atmosphere." },
+            { name: "Mars", emoji: "♂️", info: "The 'Red Planet', known for its rusty appearance, polar ice caps, and potential for past (or present) microbial life. It has the largest volcano, Olympus Mons." },
+            { name: "Jupiter", emoji: "🪐", info: "The largest planet, a gas giant with a Great Red Spot (a giant storm) and many moons, including the Galilean moons." },
+            { name: "Saturn", emoji: "✨", info: "Famous for its stunning ring system made of ice particles and rocky debris. Another gas giant." }, // Using sparkle as Saturn emoji is often missing
+            { name: "Uranus", emoji: "🌬️", info: "An ice giant that rotates on its side, possibly due to a massive collision. It has a blue-green hue from methane." },
+            { name: "Neptune", emoji: "🌊", info: "The most distant planet from the Sun (major planet), an ice giant with strong winds and a deep blue color." }
+        ];
+
+        const planetsGrid = document.querySelector('.planets-grid');
+        const planetDetailName = document.getElementById('planet-detail-name');
+        const planetDetailInfo = document.getElementById('planet-detail-info');
+        const planetDetailsDiv = document.getElementById('planet-details');
+
+        planets.forEach(planet => {
+            const card = document.createElement('div');
+            card.classList.add('planet-card');
+            card.innerHTML = `
+                <span class="planet-emoji">${planet.emoji}</span>
+                <h3>${planet.name}</h3>
+            `;
+            card.addEventListener('click', () => {
+                planetDetailName.textContent = planet.name;
+                planetDetailInfo.textContent = planet.info;
+                planetDetailsDiv.style.display = 'block';
+                // Scroll to details smoothly
+                planetDetailsDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+            planetsGrid.appendChild(card);
+        });
+        
+        // Celestial Object of the Day
+        const celestialObjects = [
+            { name: "The Sun", description: "Our star, a nearly perfect sphere of hot plasma, with internal convective motion that generates a magnetic field via a dynamo process." },
+            { name: "The Moon", description: "Earth's only natural satellite. It is the fifth largest moon in the Solar System." },
+            { name: "Andromeda Galaxy", description: "The nearest major galaxy to the Milky Way, on a collision course with us in about 4.5 billion years." },
+            { name: "Orion Nebula", description: "A diffuse nebula situated in the Milky Way, south of Orion's Belt. It is one of the brightest nebulae and is visible to the naked eye in the night sky." },
+            { name: "Hubble Space Telescope", description: "A space telescope that was launched into low Earth orbit in 1990 and remains in operation. It has provided stunning images and invaluable data." },
+            { name: "International Space Station (ISS)", description: "A modular space station in low Earth orbit. It is a multinational collaborative project involving five participating space agencies." },
+            { name: "Black Hole (Sagittarius A*)", description: "The supermassive black hole at the center of our Milky Way galaxy. Its image was first captured by the Event Horizon Telescope." }
+        ];
+        const celestialObjectDisplay = document.getElementById('celestial-object-display');
+        const newCelestialObjectButton = document.getElementById('newCelestialObjectButton');
+
+        function showRandomCelestialObject() {
+            const randomIndex = Math.floor(Math.random() * celestialObjects.length);
+            const obj = celestialObjects[randomIndex];
+            celestialObjectDisplay.innerHTML = `<strong>${obj.name}:</strong> ${obj.description}`;
+        }
+        newCelestialObjectButton.addEventListener('click', showRandomCelestialObject);
+        showRandomCelestialObject(); // Show one on load
+
+        // Random Cosmic Fact Generator
+        const facts = [
+            "Neutron stars are so dense that a teaspoonful would weigh billions of tons on Earth.",
+            "The Sun accounts for 99.86% of the total mass of our Solar System.",
+            "There are more stars in the universe than grains of sand on all the Earth's beaches.",
+            "If you could fly a plane to the nearest star (Proxima Centauri), it would take over 4 million years.",
+            "A day on Venus is longer than its year.",
+            "Footprints left by astronauts on the Moon will stay there for millions of years because there's no wind or water.",
+            "The Milky Way galaxy is estimated to be about 100,000 light-years across.",
+            "Space is completely silent because there is no atmosphere for sound to travel through.",
+            "Olympus Mons on Mars is the largest volcano in our solar system, about three times the height of Mount Everest.",
+            "Halley's Comet is visible from Earth every 75-76 years. Next appearance: 2061."
+        ];
+        const factDisplay = document.getElementById('fact-display');
+        const newFactButton = document.getElementById('newFactButton');
+
+        function showRandomFact() {
+            const randomIndex = Math.floor(Math.random() * facts.length);
+            factDisplay.textContent = facts[randomIndex];
+        }
+        newFactButton.addEventListener('click', showRandomFact);
+        showRandomFact(); // Show one on load
+
+        // Mini Cosmic Quiz
+        const quizQuestions = [
+            { question: "What is the largest planet in our Solar System?", options: ["Earth", "Jupiter", "Saturn", "Mars"], answer: "Jupiter" },
+            { question: "Which galaxy is our Solar System part of?", options: ["Andromeda", "Triangulum", "Milky Way", "Whirlpool"], answer: "Milky Way" },
+            { question: "What force keeps planets in orbit around the Sun?", options: ["Magnetism", "Gravity", "Dark Energy", "Solar Wind"], answer: "Gravity" },
+            { question: "What is the name of the theory that describes the origin of the universe?", options: ["String Theory", "General Relativity", "Big Bang Theory", "Quantum Mechanics"], answer: "Big Bang Theory" },
+            { question: "Which planet is known as the 'Red Planet'?", options: ["Venus", "Mars", "Jupiter", "Mercury"], answer: "Mars" }
+        ];
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        const quizQuestionDisplay = document.getElementById('quiz-question');
+        const quizOptionsDisplay = document.getElementById('quiz-options');
+        const quizResultDisplay = document.getElementById('quiz-result');
+        const nextQuizQuestionButton = document.getElementById('nextQuizQuestionButton');
+        const quizScoreDisplay = document.getElementById('quiz-score');
+
+        function loadQuizQuestion() {
+            if (currentQuestionIndex < quizQuestions.length) {
+                const q = quizQuestions[currentQuestionIndex];
+                quizQuestionDisplay.textContent = q.question;
+                quizOptionsDisplay.innerHTML = '';
+                q.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.addEventListener('click', () => checkAnswer(option, q.answer));
+                    quizOptionsDisplay.appendChild(button);
+                });
+                quizResultDisplay.textContent = '';
+                nextQuizQuestionButton.style.display = 'none';
+            } else {
+                quizQuestionDisplay.textContent = "Quiz Complete!";
+                quizOptionsDisplay.innerHTML = '';
+                quizResultDisplay.textContent = `Your final score: ${score} out of ${quizQuestions.length}.`;
+                nextQuizQuestionButton.textContent = 'Restart Quiz';
+                nextQuizQuestionButton.style.display = 'block';
+                currentQuestionIndex = -1; // To allow restart
+                score = 0; // Reset score for restart
+            }
+            quizScoreDisplay.textContent = `Score: ${score}/${quizQuestions.length}`;
+        }
+
+        function checkAnswer(selectedOption, correctAnswer) {
+            if (selectedOption === correctAnswer) {
+                quizResultDisplay.textContent = "Correct! Well done!";
+                quizResultDisplay.style.color = "#9FE2BF"; // Seafoam Green
+                score++;
+            } else {
+                quizResultDisplay.textContent = `Oops! The correct answer was ${correctAnswer}.`;
+                quizResultDisplay.style.color = "#FF69B4"; // Hot Pink
+            }
+            // Disable option buttons after an answer
+            quizOptionsDisplay.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            nextQuizQuestionButton.style.display = 'block';
+            quizScoreDisplay.textContent = `Score: ${score}/${quizQuestions.length}`;
+        }
+
+        nextQuizQuestionButton.addEventListener('click', () => {
+            if (currentQuestionIndex === -1) { // Restart logic
+                 currentQuestionIndex = 0;
+                 loadQuizQuestion();
+                 nextQuizQuestionButton.textContent = 'Next Question';
+            } else {
+                currentQuestionIndex++;
+                loadQuizQuestion();
+            }
+        });
+        loadQuizQuestion(); // Load first question
+
+        // Rocket Launch Animation
+        const launchButton = document.getElementById('launchButton');
+        const rocket = document.getElementById('rocket');
+        launchButton.addEventListener('click', () => {
+            if (!rocket.classList.contains('launched')) {
+                rocket.classList.add('launched');
+                setTimeout(() => {
+                    rocket.style.transition = 'none'; // Remove transition for reset
+                    rocket.classList.remove('launched');
+                    // Force reflow
+                    rocket.offsetHeight; 
+                    rocket.style.transition = 'transform 1.5s ease-out'; // Re-add transition
+                }, 2000); // Reset after 2 seconds
+            }
+        });
+
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+    </script>
+</body>
+</html>

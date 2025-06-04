@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Brat Style Generator</title>
+    <style>
+        /* Reset and Basic Setup */
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif; /* Default page font */
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        body {
+            background-color: #39FF14; /* Default to Brat Green, will be overridden by JS for canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            color: #000000; 
+        }
+
+        .traffic-lights {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+        .traffic-lights .light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+        .traffic-lights .red { background-color: #FF5F57; }
+        .traffic-lights .yellow { background-color: #FEBC2E; }
+        .traffic-lights .green-light { background-color: #28C840; } /* Renamed to avoid conflict */
+
+
+        .generator-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center;
+            width: 100%;
+            height: 100%; 
+            padding: 10px; 
+            position: relative; 
+        }
+        
+        .controls-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column; /* Stack input and select */
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            z-index: 10;
+        }
+
+        #textInput, #styleSelector {
+            width: clamp(280px, 80%, 400px); /* Responsive width for controls */
+            padding: 10px 15px;
+            font-size: 16px;
+            font-family: Arial, sans-serif; 
+            border: 2px solid #000000;
+            border-radius: 5px;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        #textInput::placeholder {
+            color: #555;
+        }
+        #styleSelector {
+            text-align: left; /* For select dropdown arrow */
+             text-align-last: center; /* Center selected option text */
+        }
+
+
+        #coverCanvas {
+            max-width: 90vw;   
+            max-height: 75vh;  
+            object-fit: contain;
+             /* border: 1px dashed transparent; /* For debugging layout */
+        }
+        
+        .action-buttons {
+            position: absolute;
+            bottom: 60px; 
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #downloadButton {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            color: #FFFFFF; /* White text */
+            background-color: #000000; /* Black button */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none; 
+            display: inline-block; 
+        }
+        #downloadButton:hover {
+            background-color: #333333;
+        }
+
+        .shadow-toggle-label { /* Changed ID to class for label */
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            color: #000000;
+        }
+        
+        #shadowToggle {
+             vertical-align: middle;
+        }
+
+        footer {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            font-family: Arial, sans-serif; 
+            color: rgba(0, 0, 0, 0.7); 
+        }
+
+        footer a {
+            color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="traffic-lights">
+        <span class="light red"></span>
+        <span class="light yellow"></span>
+        <span class="light green-light"></span>
+    </div>
+
+    <div class="generator-container">
+        <div class="controls-bar">
+            <input type="text" id="textInput" placeholder="Type your text..." maxlength="100">
+            <select id="styleSelector">
+                <option value="style1">Jumbled/Crowded Text</option>
+                <option value="style2">Bold Color Block</option>
+                <option value="style3" selected>Classic Brat (Green)</option>
+                <option value="style4">Flipped & Crowded (Green)</option>
+            </select>
+        </div>
+        
+        <canvas id="coverCanvas"></canvas>
+
+        <div class="action-buttons">
+            <label class="shadow-toggle-label" for="shadowToggle">Shadow:</label>
+            <input type="checkbox" id="shadowToggle">
+            <a id="downloadButton" href="#" download="brat_style_cover.png">Download PNG</a>
+        </div>
+    </div>
+
+    <footer>
+        Inspired by album art styles. For entertainment purposes. <br>
+        <a href="#">Terms</a> | <a href="#">Privacy</a>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const textInput = document.getElementById('textInput');
+            const styleSelector = document.getElementById('styleSelector');
+            const canvas = document.getElementById('coverCanvas');
+            const ctx = canvas.getContext('2d');
+            const downloadButton = document.getElementById('downloadButton');
+            const shadowToggle = document.getElementById('shadowToggle');
+
+            const DEFAULT_FONTS = {
+                sansSerif: '"Arial", sans-serif',
+                impact: '"Impact", "Arial Black", sans-serif'
+            };
+
+            function resizeCanvas() {
+                const container = document.querySelector('.generator-container');
+                const availableWidth = container.clientWidth * 0.90; 
+                const availableHeight = container.clientHeight * 0.70; 
+                
+                const size = Math.min(availableWidth, availableHeight, 800); 
+                canvas.width = size;
+                canvas.height = size; 
+                document.body.style.backgroundColor = getStyleConfig(styleSelector.value).pageBg; // Update page BG
+                drawCover();
+            }
+
+            function getStyleConfig(style) {
+                switch (style) {
+                    case 'style1': // Jumbled/Crowded
+                        return {
+                            bgColor: '#FFFFFF', pageBg: '#CCCCCC', textColor: '#000000',
+                            fontFamily: DEFAULT_FONTS.sansSerif, textCase: 'lowercase',
+                            alignment: 'left', layout: 'multi-line-wrap', lineSpacingFactor: 1.2,
+                            transformations: null, effects: null, textBlockWidthFactor: 0.7
+                        };
+                    case 'style2': // Bold Color Block
+                        return {
+                            bgColor: '#0000FF', pageBg: '#00008B', textColor: '#FF0000',
+                            fontFamily: DEFAULT_FONTS.impact, textCase: 'uppercase',
+                            alignment: 'center', layout: 'single-line-max',
+                            transformations: null, effects: null
+                        };
+                    case 'style3': // Classic Brat
+                        return {
+                            bgColor: '#39FF14', pageBg: '#2AAE0F', textColor: '#000000',
+                            fontFamily: DEFAULT_FONTS.sansSerif, textCase: 'lowercase',
+                            alignment: 'center', layout: 'single-line-max',
+                            transformations: null, effects: { blur: '1px' }
+                        };
+                    case 'style4': // Flipped & Crowded
+                        return {
+                            bgColor: '#39FF14', pageBg: '#2AAE0F', textColor: '#000000',
+                            fontFamily: DEFAULT_FONTS.sansSerif, textCase: 'lowercase',
+                            alignment: 'center', layout: 'multi-line-center', lineSpacingFactor: 0.7,
+                            transformations: { scaleX: -1, scaleY: -1 }, effects: null
+                        };
+                    default:
+                        return getStyleConfig('style3'); // Default to classic
+                }
+            }
+            
+            // Generic function to wrap text (simplified)
+            function wrapText(currentCtx, text, maxWidth, fontFamily, baseFontSize, lineSpacingFactor) {
+                currentCtx.font = `bold ${baseFontSize}px ${fontFamily}`;
+                let words = text.split(' ');
+                let lines = [];
+                let currentLine = words[0] || "";
+
+                for (let i = 1; i < words.length; i++) {
+                    let testLine = currentLine + ' ' + words[i];
+                    if (currentCtx.measureText(testLine).width > maxWidth && currentLine !== "") {
+                        lines.push(currentLine);
+                        currentLine = words[i];
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            }
+
+
+            function drawCover() {
+                if (!canvas.width || !canvas.height) return;
+
+                let rawText = textInput.value.trim();
+                if (!rawText) rawText = textInput.placeholder || "brat";
+
+                const config = getStyleConfig(styleSelector.value);
+                document.body.style.backgroundColor = config.pageBg; // Update page BG based on style
+
+                // Apply text case transformation
+                let text;
+                if (config.textCase === 'uppercase') text = rawText.toUpperCase();
+                else if (config.textCase === 'lowercase') text = rawText.toLowerCase();
+                else text = rawText;
+
+                // Reset canvas state
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformations
+                ctx.filter = 'none'; // Reset filters
+
+                // Fill background
+                ctx.fillStyle = config.bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Apply transformations if any (for Style 4)
+                if (config.transformations) {
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.scale(config.transformations.scaleX || 1, config.transformations.scaleY || 1);
+                    ctx.translate(-canvas.width / 2, -canvas.height / 2);
+                }
+                
+                // Apply effects if any (for Style 3 blur)
+                if (config.effects && config.effects.blur) {
+                    ctx.filter = `blur(${config.effects.blur})`;
+                }
+
+                // Text Styling
+                ctx.fillStyle = config.textColor;
+                ctx.textBaseline = 'middle';
+
+                // Optional Drop Shadow (applied after transformations and filters)
+                if (shadowToggle.checked) {
+                    // Shadow needs to be applied carefully if canvas is transformed
+                    // For simplicity, shadow is applied in non-transformed space here.
+                    // If transforms active, shadow might look odd.
+                    // Best to apply shadow before fillText without canvas transforms if possible,
+                    // or manage shadow transformation correctly.
+                    // This basic shadow won't be transformed with style 4.
+                    const tempCtx = canvas.getContext('2d'); // Get a fresh context state for shadow if needed
+                    tempCtx.shadowColor = 'rgba(0,0,0,0.3)';
+                    tempCtx.shadowOffsetX = Math.max(2, canvas.width * 0.005);
+                    tempCtx.shadowOffsetY = Math.max(2, canvas.width * 0.005);
+                    tempCtx.shadowBlur = Math.max(3, canvas.width * 0.007);
+                } else {
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                    ctx.shadowBlur = 0;
+                }
+                
+                const padding = canvas.width * 0.05;
+                const textRenderMaxWidth = canvas.width - (padding * 2);
+                const textRenderMaxHeight = canvas.height - (padding * 2);
+                let fontSize, lines;
+
+                if (config.layout === 'single-line-max') {
+                    lines = [text];
+                    fontSize = textRenderMaxHeight * 0.8; // Start large
+                    ctx.font = `bold ${fontSize}px ${config.fontFamily}`;
+                    while (ctx.measureText(text).width > textRenderMaxWidth && fontSize > 10) {
+                        fontSize -= 1;
+                        ctx.font = `bold ${fontSize}px ${config.fontFamily}`;
+                    }
+                } else if (config.layout === 'multi-line-wrap' || config.layout === 'multi-line-center') {
+                    // Iteratively find font size for multi-line
+                    fontSize = Math.min(textRenderMaxHeight / 2, 100); // Start with a reasonable font size
+                    let currentLines;
+                    let attempts = 0;
+                    const maxAttempts = 50;
+
+                    do {
+                        currentLines = wrapText(ctx, text, config.textBlockWidthFactor ? textRenderMaxWidth * config.textBlockWidthFactor : textRenderMaxWidth, config.fontFamily, fontSize);
+                        const requiredHeight = currentLines.length * fontSize * (config.lineSpacingFactor || 1.2);
+                        if (requiredHeight > textRenderMaxHeight && fontSize > 10) {
+                            fontSize -= 2;
+                        } else {
+                            break;
+                        }
+                        attempts++;
+                    } while (fontSize > 10 && attempts < maxAttempts);
+                    lines = currentLines;
+
+                } else { // Fallback or other layouts
+                     lines = [text]; fontSize = 50; // Default
+                }
+                ctx.font = `bold ${fontSize}px ${config.fontFamily}`; // Set final font
+
+                const lineHeight = fontSize * (config.lineSpacingFactor || 1.2);
+                const totalTextHeight = (lines.length -1) * lineHeight; // Approximate height of text block
+
+                let startY;
+                if (config.alignment === 'center' || config.layout === 'multi-line-center') {
+                    ctx.textAlign = 'center';
+                    startY = (canvas.height / 2) - (totalTextHeight / 2);
+                     lines.forEach((line, index) => {
+                        ctx.fillText(line.trim(), canvas.width / 2, startY + (index * lineHeight));
+                    });
+                } else if (config.alignment === 'left') {
+                    ctx.textAlign = 'left';
+                    startY = (canvas.height / 2) - (totalTextHeight / 2);
+                    const xPos = padding + (config.textBlockWidthFactor ? (textRenderMaxWidth * (1-config.textBlockWidthFactor))/2 : 0) ; // Center the text block for left align
+                     lines.forEach((line, index) => {
+                        ctx.fillText(line.trim(), xPos , startY + (index * lineHeight));
+                    });
+                }
+                
+                // Crucially, reset filter after drawing text if it was applied
+                // to prevent it affecting subsequent draws or canvas state.
+                ctx.filter = 'none';
+                 // Reset shadow after drawing text
+                ctx.shadowColor = 'transparent';
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                ctx.shadowBlur = 0;
+
+
+                // Update download link
+                try {
+                    // Draw one more time without filter for clean download if blur was on
+                    if (config.effects && config.effects.blur) {
+                        const cleanCanvas = document.createElement('canvas');
+                        cleanCanvas.width = canvas.width;
+                        cleanCanvas.height = canvas.height;
+                        const cleanCtx = cleanCanvas.getContext('2d');
+                        
+                        // Redraw everything on cleanCtx WITHOUT the blur
+                        cleanCtx.fillStyle = config.bgColor;
+                        cleanCtx.fillRect(0, 0, cleanCanvas.width, cleanCanvas.height);
+                        if (config.transformations) { // Apply transformations for download too
+                            cleanCtx.translate(cleanCanvas.width / 2, cleanCanvas.height / 2);
+                            cleanCtx.scale(config.transformations.scaleX || 1, config.transformations.scaleY || 1);
+                            cleanCtx.translate(-cleanCanvas.width / 2, -cleanCanvas.height / 2);
+                        }
+                        cleanCtx.font = `bold ${fontSize}px ${config.fontFamily}`;
+                        cleanCtx.fillStyle = config.textColor;
+                        cleanCtx.textBaseline = 'middle';
+                        if (config.alignment === 'center' || config.layout === 'multi-line-center') {
+                            cleanCtx.textAlign = 'center';
+                            lines.forEach((line, index) => {
+                                cleanCtx.fillText(line.trim(), cleanCanvas.width / 2, startY + (index * lineHeight));
+                            });
+                        } else if (config.alignment === 'left') {
+                            cleanCtx.textAlign = 'left';
+                             const xPos = padding + (config.textBlockWidthFactor ? (textRenderMaxWidth * (1-config.textBlockWidthFactor))/2 : 0) ;
+                            lines.forEach((line, index) => {
+                                cleanCtx.fillText(line.trim(), xPos, startY + (index * lineHeight));
+                            });
+                        }
+                        downloadButton.href = cleanCanvas.toDataURL('image/png');
+
+                    } else {
+                         downloadButton.href = canvas.toDataURL('image/png');
+                    }
+                } catch (e) {
+                    console.error("Error creating data URL:", e);
+                }
+            }
+
+            // Event Listeners
+            textInput.addEventListener('input', drawCover);
+            styleSelector.addEventListener('change', () => {
+                 document.body.style.backgroundColor = getStyleConfig(styleSelector.value).pageBg;
+                 drawCover();
+            });
+            shadowToggle.addEventListener('change', drawCover);
+            window.addEventListener('resize', resizeCanvas);
+
+            // Initial setup
+            textInput.value = "brat"; // Default text
+            resizeCanvas(); // Set initial canvas size and draw
+        });
+    </script>
+</body>
+</html>

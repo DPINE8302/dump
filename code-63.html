@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirati Rattanaporn - Terminal v1.1</title> {/* Updated Title slightly */}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Default Theme Variables */
+            --color-bg-main: #0b0b0b;
+            --color-text-main: #f0f0f0;
+            --color-bg-terminal: #131315;
+            --color-terminal-border: #3A3A3A;
+            --color-terminal-prompt: #f0f0f0;
+            
+            --syntax-command-name: #e4b363; 
+            --syntax-title: #67e8f9;        
+            --syntax-keyword: #cba6f7;      
+            --syntax-string: #89d9a1;       
+            --syntax-punctuation: #777f8b;  
+            --syntax-comment: #6a737d;      
+            --syntax-error: #f87171;       
+            --syntax-ascii-art: #e4b363; 
+            --suggestion-text: #505050;     
+
+            --color-scrollbar-thumb: #4a4a4f;
+            --color-scrollbar-track: #252528;
+            
+            --wiki-bg: #ffffff;
+            --wiki-text: #202122;
+            --wiki-border: #a2a9b1;
+            --wiki-border-hover: #72777d;
+            --wiki-bg-hover: #f8f9fa;
+        }
+
+        html { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; box-sizing: border-box; }
+        *, *:before, *:after { box-sizing: inherit; }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background-color: var(--color-bg-main);
+            color: var(--color-text-main);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 16px; 
+            padding: 2rem;
+            transition: background-color 0.3s ease, color 0.3s ease; /* For theme transitions */
+        }
+
+        .page-header, .page-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            flex-shrink: 0;
+            padding-left: 0.5rem; 
+            padding-right: 0.5rem;
+        }
+        .page-header { margin-bottom: 1.5rem; }
+        .page-footer { margin-top: 1.5rem; }
+        
+        .page-header .name, .page-footer .role, .page-footer .time {
+            font-weight: 400;
+            font-size: 0.95rem; 
+        }
+
+        .terminal-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            width: 100%;
+        }
+        
+        /* Terminal styles with CSS vars for theming */
+        .terminal-container {
+            background-color: var(--color-bg-terminal);
+            border: 1px solid var(--color-terminal-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .terminal-input {
+            background: transparent; border: none; outline: none;
+            color: inherit; width: 100%; /* Inherits color from parent which is themed */
+            font-family: 'DM Mono', monospace; 
+            font-size: inherit; 
+            line-height: inherit;
+            position: relative; z-index: 1; 
+        }
+         .terminal-input-suggestion {
+            position: absolute; left: 0; top: 0;
+            color: var(--suggestion-text); /* Themed suggestion text */
+            font-family: inherit; font-size: inherit; line-height: inherit;
+            white-space: pre; 
+            z-index: 0; 
+            pointer-events: none; 
+        }
+
+
+        .terminal-output-container::-webkit-scrollbar { width: 6px; }
+        .terminal-output-container::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
+        .terminal-output-container::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
+        .terminal-output-container::-webkit-scrollbar-thumb:hover { background: #5f5f66; } /* Keep hover distinct or theme it */
+        .terminal-output-container { scrollbar-width: thin; scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track); }
+
+        .terminal-input-area { position: relative; display: flex; align-items: center; flex-grow: 1; }
+       
+
+        .blinking-cursor {
+            background-color: var(--color-text-main); /* Cursor blinks with main text color */
+            animation: blink 1s step-end infinite;
+            display: inline-block;
+            width: 0.5em; 
+            height: 1em;  
+            margin-left: 0.1em; 
+            vertical-align: text-bottom; 
+        }
+        @keyframes blink { from, to { opacity: 0; } 50% { opacity: 1; } }
+
+        .input-line .prompt { color: var(--color-terminal-prompt); }
+        .input-line .command-text { color: var(--syntax-command-name); } 
+        
+        .output-line { white-space: pre-wrap; line-height: 1.4; }
+        .output-line div { min-height: 1em; } 
+        .output-line .ascii-art { color: var(--syntax-ascii-art); line-height: 1.1; display: block; }
+        
+        .s-cmd       { color: var(--syntax-command-name); text-decoration: underline; }
+        .s-title     { color: var(--syntax-title); font-weight: 500; }
+        .s-keyword   { color: var(--syntax-keyword); }
+        .s-string    { color: var(--syntax-string); }
+        .s-punct     { color: var(--syntax-punctuation); } 
+        .s-comment   { color: var(--syntax-comment); }
+        .s-error     { color: var(--syntax-error); }
+
+        .wikipedia-style-button {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--wiki-bg);
+            color: var(--wiki-text);
+            border: 1px solid var(--wiki-border);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+        .wikipedia-style-button:hover {
+            background-color: var(--wiki-bg-hover);
+            border-color: var(--wiki-border-hover);
+        }
+    </style>
+</head>
+<body> 
+    <header class="page-header">
+        <span class="name">Kirati Rattanaporn</span>
+    </header>
+
+    <div class="terminal-wrapper">
+        <div id="root" class="w-full h-full flex justify-center items-center"></div>
+    </div>
+
+    <footer class="page-footer">
+        <span class="role">technology and creative enthusiast</span>
+        <span class="time" id="clock"></span>
+    </footer>
+
+    <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="wikipedia-style-button">W</a>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PROMPT_SYMBOL_RAW = ">";
+        const PROMPT_SYMBOL_DISPLAY = `${PROMPT_SYMBOL_RAW} `; 
+        const TYPING_SPEED = 10; // Adjusted for reboot effect, set to 0 for instant typing
+
+        const S = {
+            cmd: (text) => `<span class="s-cmd">${text}</span>`,
+            title: (text) => `<span class="s-title">${text}</span>`,
+            keyword: (text) => `<span class="s-keyword">${text}</span>`,
+            string: (text) => `<span class="s-string">${text}</span>`,
+            punct: (text) => `<span class="s-punct">${text}</span>`,
+            comment: (text) => `<span class="s-comment">${text}</span>`,
+            error: (text) => `<span class="s-error">${text}</span>`,
+            ascii: (text) => `<span class="ascii-art">${text}</span>`
+        };
+        const link = (text, href) => `<a href="${href}" target="_blank" rel="noopener noreferrer" class="s-cmd">${text}</a>`;
+
+        // --- NEW: KNOWN_COMMANDS updated ---
+        const KNOWN_COMMANDS = ['help', 'whoami', 'contact', 'interests', 'achievements', 'projects', 'clear', 'fortune', 'credits', 'theme'];
+        // Hidden commands like 'reboot', 'banana' are not listed here for autocomplete/help but will work.
+
+        const WIN_ASCII_ART = `
+${S.ascii(' __        ___       ')}
+${S.ascii(' \\ \\      / (_)_ __  ')}
+${S.ascii('  \\ \\ /\\ / /| | \'_ \\ ')}
+${S.ascii('   \\ V  V / | | | | |')}
+${S.ascii('    \\_/\\_/  |_|_| |_|')}
+`;
+
+        // --- NEW: FORTUNES for fortune command ---
+        const FORTUNES = [
+            "An exciting opportunity lies ahead of you.",
+            "You will be unusually successful in business.",
+            "Your creativity will lead to great things.",
+            "A pleasant surprise is waiting for you.",
+            "Embrace the new, cherish the old.",
+            "The journey of a thousand miles begins with a single keystroke.",
+            "Debug your life, compile your dreams.",
+            "01000110 01101111 01110010 01110100 01110101 01101110 01100101 favors the bold.",
+            "There is no patch for human stupidity.",
+            "Keep calm and code on.",
+            "Remember to clear your cache and cookies... and your mind.",
+            "Ctrl+S your day before it crashes.",
+            "The best way to predict the future is to invent it. - Alan Kay"
+        ];
+
+        // --- NEW: BANANA ASCII ART ---
+        const BANANA_ART = [
+            "          .--.",
+            "         /  .",
+            "        / ./ ",
+            "       /./' ",
+            "      // /   ",
+            "     // /    ",
+            "    // /     ",
+            " __// /__    ",
+            "(__________)",
+        ];
+        
+        // --- NEW: THEME DEFINITIONS ---
+        const THEMES = {
+            default: {
+                '--color-bg-main': '#0b0b0b',
+                '--color-text-main': '#f0f0f0',
+                '--color-bg-terminal': '#131315',
+                '--color-terminal-border': '#3A3A3A',
+                '--color-terminal-prompt': '#f0f0f0',
+                '--syntax-command-name': '#e4b363', 
+                '--syntax-title': '#67e8f9',        
+                '--syntax-keyword': '#cba6f7',      
+                '--syntax-string': '#89d9a1',       
+                '--syntax-punctuation': '#777f8b',  
+                '--syntax-comment': '#6a737d',      
+                '--syntax-error': '#f87171',       
+                '--syntax-ascii-art': '#e4b363', 
+                '--suggestion-text': '#505050',     
+                '--color-scrollbar-thumb': '#4a4a4f',
+                '--color-scrollbar-track': '#252528',
+                '--wiki-bg': '#ffffff',
+                '--wiki-text': '#202122',
+                '--wiki-border': '#a2a9b1',
+                '--wiki-border-hover': '#72777d',
+                '--wiki-bg-hover': '#f8f9fa',
+            },
+            hacker: {
+                '--color-bg-main': '#000000',
+                '--color-text-main': '#00ff00',
+                '--color-bg-terminal': '#050505',
+                '--color-terminal-border': '#003300',
+                '--color-terminal-prompt': '#00ff00',
+                '--syntax-command-name': '#00cc00', 
+                '--syntax-title': '#33ff33',        
+                '--syntax-keyword': '#55ff55',      
+                '--syntax-string': '#22aa22',       
+                '--syntax-punctuation': '#009900',  
+                '--syntax-comment': '#007700',      
+                '--syntax-error': '#ff4444',       
+                '--syntax-ascii-art': '#00dd00', 
+                '--suggestion-text': '#005500',     
+                '--color-scrollbar-thumb': '#006600',
+                '--color-scrollbar-track': '#002200',
+                '--wiki-bg': '#001100',
+                '--wiki-text': '#00ff00',
+                '--wiki-border': '#005500',
+                '--wiki-border-hover': '#007700',
+                '--wiki-bg-hover': '#002200',
+            },
+            light: {
+                '--color-bg-main': '#f4f4f4',
+                '--color-text-main': '#222222',
+                '--color-bg-terminal': '#ffffff',
+                '--color-terminal-border': '#cccccc',
+                '--color-terminal-prompt': '#333333',
+                '--syntax-command-name': '#d9480f', 
+                '--syntax-title': '#0b7285',        
+                '--syntax-keyword': '#862e9c',      
+                '--syntax-string': '#2f9e44',       
+                '--syntax-punctuation': '#555555',  
+                '--syntax-comment': '#888888',      
+                '--syntax-error': '#c92a2a',       
+                '--syntax-ascii-art': '#d9480f', 
+                '--suggestion-text': '#aaaaaa',     
+                '--color-scrollbar-thumb': '#bbbbbb',
+                '--color-scrollbar-track': '#dddddd',
+                '--wiki-bg': '#eeeeee',
+                '--wiki-text': '#111111',
+                '--wiki-border': '#bbbbbb',
+                '--wiki-border-hover': '#999999',
+                '--wiki-bg-hover': '#f0f0f0',
+            }
+        };
+
+        // --- NEW: Function to apply theme ---
+        function applyTheme(themeName) {
+            const theme = THEMES[themeName] || THEMES.default;
+            for (const variable in theme) {
+                document.documentElement.style.setProperty(variable, theme[variable]);
+            }
+            localStorage.setItem('terminalTheme', themeName);
+        }
+            
+        function levenshteinDistance(a, b) {
+            // ... (levenshteinDistance function remains the same)
+            const an = a ? a.length : 0;
+            const bn = b ? b.length : 0;
+            if (an === 0) return bn;
+            if (bn === 0) return an;
+            const matrix = Array(bn + 1);
+            for (let i = 0; i <= bn; ++i) matrix[i] = [i];
+            for (let j = 0; j <= an; ++j) matrix[0][j] = j;
+            for (let i = 1; i <= bn; ++i) {
+                for (let j = 1; j <= an; ++j) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1, 
+                            matrix[i][j - 1] + 1,     
+                            matrix[i - 1][j] + 1      
+                        );
+                    }
+                }
+            }
+            return matrix[bn][an];
+        }
+        // --- UPDATED: TARGET_HELP_OUTPUT to include new known commands ---
+        const TARGET_HELP_OUTPUT = `${S.title('Available commands')} ${S.punct('::')} 
+  ${S.cmd('help')}         ${S.punct('=>')} Show this help message
+  ${S.cmd('whoami')}       ${S.punct('=>')} Learn more about me
+  ${S.cmd('contact')}      ${S.punct('=>')} Get in touch
+  ${S.cmd('interests')}    ${S.punct('=>')} View my creative interests
+  ${S.cmd('achievements')} ${S.punct('=>')} See key achievements
+  ${S.cmd('projects')}     ${S.punct('=>')} Explore my projects and showcases
+  ${S.cmd('fortune')}      ${S.punct('=>')} Read a random fortune cookie
+  ${S.cmd('credits')}      ${S.punct('=>')} View portfolio credits
+  ${S.cmd('theme')}        ${S.punct('=>')} Change terminal theme ${S.punct('(')}e.g., ${S.cmd('theme hacker')}${S.punct(')')}
+  ${S.cmd('clear')}        ${S.punct('=>')} Clear the terminal screen ${S.punct('</>')}`;
+        
+        const aboutMeOutput = `${WIN_ASCII_ART}
+Hello, I'm ${S.keyword('Win (Kirati Rattanaporn)')}, a passionate technology and creative enthusiast from Bangkok, Thailand. 
+Currently in ${S.string('Grade 10')}, I have a strong interest in technology, astronomy, photography, and film. 
+Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. 
+My goal is to transfer to ${S.string('SPSM School')} to study multimedia and later pursue a degree at ${S.string("Chulalongkorn University's Faculty of Communication Arts")}.
+
+${S.punct('(')}You can learn more about me on my ${link('Wikipedia page', 'https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn')}${S.punct(')')}.`;
+        
+        const contactOutput = `${S.title('Contact Information')} ${S.punct('::')}
+  ${S.punct('-')} ${S.keyword('GitHub Profile')} ${S.punct(':')} ${link('DPINE8302', 'https://github.com/DPINE8302')} ${S.comment('(Primary Code Hub)')}
+  ${S.punct('-')} ${S.keyword('Instagram')} ${S.punct(':')} ${link('@Win.rn', 'https://www.instagram.com/Win.rn')}
+  ${S.punct('-')} ${S.keyword('Photography IG')} ${S.punct(':')} ${link('@Win.albums', 'https://www.instagram.com/Win.albums')}
+  ${S.punct('-')} ${S.keyword('YouTube')} ${S.punct(':')} ${link('My Channel', 'https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg')}
+  ${S.punct('-')} ${S.keyword('Wikipedia')} ${S.punct(':')} ${link('Biography', 'https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn')} ${S.punct('</>')}`;
+        
+        const interestsOutput = `${S.title('Creative Interests')} ${S.punct('::')}
+  ${S.punct('/>')} ${S.keyword('Filmmaking')} ${S.punct(':')} ${S.string('Crafting stories and bringing visions to life through video.')}
+  ${S.punct('/>')} ${S.keyword('Technology')} ${S.punct(':')} ${S.string('Exploring new tech, coding, and building innovative projects like robotics & web apps.')}
+  ${S.punct('/>')} ${S.keyword('Photography')} ${S.punct(':')} ${S.string('Capturing moments, perspectives, and the beauty of the world.')}
+  ${S.punct('/>')} ${S.keyword('Astronomy')} ${S.punct(':')} ${S.string('Gazing at the cosmos and understanding our place in the universe.')} ${S.punct('</>')}`;
+        
+        const achievementsOutput = `${S.title('Key Achievements')} ${S.punct('::')}
+  ${S.punct('-')} ${S.string('Multiple national gold medals in')} ${S.keyword('Robotics')} ${S.comment('(2022-2024)')}
+  ${S.punct('-')} ${S.string('Gold in')} ${S.keyword('Multi-Skills')} ${S.comment('(EP Open House 2024)')}
+  ${S.punct('-')} ${S.string('Silver in')} ${S.keyword('Regional English Contest')} ${S.comment('(2024)')}
+  ${S.punct('-')} ${S.string('Medals in')} ${S.keyword('Athletics (Sprints)')}
+
+${S.comment("(For a detailed list, see my Wikipedia page via 'whoami' or the 'W' button)")} ${S.punct('</>')}`;
+        
+        const projectsOutput = `${S.title('Projects & Showcases')} ${S.punct('::')}
+
+  ${S.title('Interactive Web Apps & CLI')}
+    ${S.punct('->')} ${S.keyword('Devw-2.5')} ${S.comment('(Personal Hub & Advanced Terminal)')}
+       ${S.punct('  -')} ${S.string('Live:')} ${link('devw.space', 'https://devw.space')}
+       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/Devw-2.5.git')}
+
+    ${S.punct('->')} ${S.keyword('This Terminal Portfolio')} ${S.comment('(v1.1 - You are here!)')}
+       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/Personal-Terminal-Portfolio')} ${S.comment(' (Update if repo name differs!)')}
+
+  ${S.title('Games')}
+    ${S.punct('->')} ${S.keyword('Snakky Game')} ${S.comment('(Classic Snake Game Recreation)')}
+       ${S.punct('  -')} ${S.string('Play:')} ${link('Play Online', 'https://dpine8302.github.io/Snakky-Game/')}
+       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/Snakky-Game.git')}
+
+  ${S.title('Portfolio & Design Showcases')}
+    ${S.punct('->')} ${S.keyword('Draft Portfolio')} ${S.comment('(Early Portfolio Concept)')}
+       ${S.punct('  -')} ${S.string('View:')} ${link('Live Site', 'https://dpine8302.github.io/draft-port/')}
+       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/draft-port.git')}
+
+  ${S.title('Video & Creative Content')}
+    ${S.punct('->')} ${S.keyword('Feature Video Concept')}
+       ${S.punct('  -')} ${S.string('Watch:')} ${link('YouTube', 'https://www.youtube.com/embed/BMhot-xCYmk')}
+    ${S.punct('->')} ${S.keyword('Channel Gallery')} ${S.comment('(Video Projects)')}
+       ${S.punct('  -')} ${S.string('View:')} ${link('YouTube Channel', 'https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg')}
+    ${S.punct('->')} ${S.keyword('Photography Showcase')}
+       ${S.punct('  -')} ${S.string('View:')} ${link('@Win.albums on Instagram', 'https://www.instagram.com/Win.albums')}
+
+  ${S.comment("Explore more on my GitHub profile (see 'contact')")} ${S.punct('</>')}`;
+
+        // --- NEW: Credits Output ---
+        const creditsOutput = `${S.title('Portfolio Credits')} ${S.punct('::')}
+  ${S.keyword('Concept & Development:')} Kirati Rattanaporn (Win)
+  ${S.keyword('Built with:')} React, Tailwind CSS, Babel
+  ${S.keyword('Font:')} DM Mono
+  ${S.keyword('Special Thanks:')} Coffee, Stack Overflow, and You!
+  ${S.punct('---')}
+  ${S.comment('This terminal portfolio is open source.')}
+  ${S.comment('Check out the code via the \'projects\' command.')} ${S.punct('</>')}`;
+
+        // --- NEW: Konami Code Sequence & Reward ---
+        const KONAMI_CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'];
+        const KONAMI_REWARD = `${S.title('KONAMI CODE ACTIVATED!')}
+${S.ascii(`
+  .--""--.--""--.--""--.--""--.--""--.
+ |  ${S.keyword('CHEAT MODE ENGAGED!')}                    |
+  .--""--.--""--.--""--.--""--.--""--.
+ |  ${S.string('Infinite creativity unlocked!')}         |
+  .--""--.--""--.--""--.--""--.--""--.
+`)}
+${S.comment('Just kidding... or am I? Thanks for playing!')} ${S.punct('</>')}`;
+
+
+        function Typewriter({ text, speed = TYPING_SPEED, onFinished, isHtml = false }) {
+            // ... (Typewriter component remains the same)
+            const [displayText, setDisplayText] = useState("");
+            useEffect(() => {
+                if (speed === 0 || !text) {
+                    setDisplayText(text || "");
+                    if (onFinished) onFinished();
+                    return;
+                }
+                let currentIdx = 0;
+                setDisplayText("");
+                const intervalId = setInterval(() => {
+                    if (currentIdx < text.length) {
+                        setDisplayText(prev => prev + text[currentIdx]);
+                        currentIdx++;
+                    } else {
+                        clearInterval(intervalId);
+                        if (onFinished) onFinished();
+                    }
+                }, speed);
+                return () => clearInterval(intervalId);
+            }, [text, speed, onFinished]);
+
+            const content = isHtml ? 
+                <div dangerouslySetInnerHTML={{ __html: displayText.replace(/\n/g, '<br/>') }} /> :
+                displayText.split('\n').map((line, i) => <div key={i}>{line || ' '}</div>);
+            
+            return <div className="output-line">{content}</div>;
+        }
+
+
+        function Terminal() {
+            const [history, setHistory] = useState([]);
+            const [inputValue, setInputValue] = useState("");
+            const [suggestion, setSuggestion] = useState("");
+            const [commandHistoryLog, setCommandHistoryLog] = useState([]);
+            const [commandHistoryIndex, setCommandHistoryIndex] = useState(-1);
+            // --- NEW: State for reboot sequence ---
+            const [isRebooting, setIsRebooting] = useState(false);
+
+
+            const inputRef = useRef(null);
+            const scrollRef = useRef(null);
+
+            // --- NEW: Effect to apply theme on load ---
+            useEffect(() => {
+                const savedTheme = localStorage.getItem('terminalTheme');
+                if (savedTheme && THEMES[savedTheme]) {
+                    applyTheme(savedTheme);
+                } else {
+                    applyTheme('default'); // Ensure default is applied if nothing saved or invalid
+                }
+            }, []);
+
+
+            useEffect(() => {
+                if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }
+            }, [history]);
+
+            useEffect(() => {
+                const isTypingOutput = history.some(item => item.type === 'output' && item.isTyping);
+                if (!isTypingOutput && !isRebooting) { inputRef.current?.focus(); } // Focus if not rebooting
+            }, [history, isRebooting]);
+
+            const updateSuggestion = (currentInput) => {
+                // ... (updateSuggestion remains the same)
+                if (!currentInput) {
+                    setSuggestion("");
+                    return;
+                }
+                const typedCommandPart = currentInput.toLowerCase().split(/\s+/)[0]; 
+                const possibleCommands = KNOWN_COMMANDS.filter(cmd => cmd.startsWith(typedCommandPart));
+                
+                if (possibleCommands.length === 1 && possibleCommands[0] !== typedCommandPart) {
+                    const args = currentInput.includes(' ') ? currentInput.substring(currentInput.indexOf(' ')) : '';
+                    setSuggestion(possibleCommands[0].substring(typedCommandPart.length) + args);
+                } else {
+                    setSuggestion("");
+                }
+            };
+
+            const handleInputChange = (e) => {
+                // ... (handleInputChange remains the same)
+                const value = e.target.value;
+                setInputValue(value);
+                updateSuggestion(value);
+            };
+
+            const handleKeyDown = (e) => {
+                // ... (handleKeyDown remains mostly the same, added isRebooting check)
+                 if (isRebooting) { // Prevent input during reboot
+                    e.preventDefault();
+                    return;
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let commandToProcess = inputValue.trim();
+
+                    if (commandToProcess === "" && history.length === 0) {
+                        commandToProcess = "help"; 
+                        setInputValue("help"); 
+                    } else if (commandToProcess === "") {
+                        setSuggestion(""); 
+                        return; 
+                    }
+                    
+                    processAndRecordCommand(commandToProcess);
+                    setSuggestion("");
+
+                } else if (e.key === 'Tab') {
+                    if (suggestion) {
+                        e.preventDefault();
+                        setInputValue(inputValue.trim().split(/\s+/)[0] + suggestion);
+                        setSuggestion("");
+                    }
+                } else if (e.key === 'ArrowUp') { 
+                    e.preventDefault();
+                    if (commandHistoryLog.length > 0) {
+                        const newIndex = Math.min(commandHistoryIndex + 1, commandHistoryLog.length - 1);
+                        setCommandHistoryIndex(newIndex); 
+                        const historicCmd = commandHistoryLog[newIndex] || "";
+                        setInputValue(historicCmd);
+                        updateSuggestion(historicCmd); 
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (commandHistoryIndex > -1) {
+                        const newIndex = Math.max(commandHistoryIndex - 1, -1);
+                        setCommandHistoryIndex(newIndex);
+                        const historicCmd = newIndex === -1 ? "" : (commandHistoryLog[newIndex] || "");
+                        setInputValue(historicCmd);
+                        updateSuggestion(historicCmd); 
+                    } else { 
+                        setInputValue("");
+                        setSuggestion("");
+                    }
+                }
+            };
+            
+            // --- UPDATED processAndRecordCommand to include Konami check ---
+            const processAndRecordCommand = (commandInput) => {
+                const newHistoryEntry = { 
+                    id: Date.now(), 
+                    type: 'input', 
+                    content: `${PROMPT_SYMBOL_RAW}&nbsp;<span class="s-cmd">${commandInput.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`,
+                    isHtml: true
+                };
+                
+                setHistory(prev => [...prev, newHistoryEntry]);
+                setInputValue(""); 
+                
+                const newCommandLog = [commandInput.toLowerCase(), ...commandHistoryLog].slice(0, Math.max(20, KONAMI_CODE.length));
+                setCommandHistoryLog(newCommandLog);
+                setCommandHistoryIndex(-1);
+                
+                // Check for Konami Code
+                if (newCommandLog.length >= KONAMI_CODE.length) {
+                    const recentCommands = newCommandLog.slice(0, KONAMI_CODE.length).reverse();
+                    if (JSON.stringify(recentCommands) === JSON.stringify(KONAMI_CODE)) {
+                        addOutputToHistory(KONAMI_REWARD);
+                        // Optionally clear command history log after Konami to prevent re-triggering immediately
+                        setCommandHistoryLog(prev => prev.slice(KONAMI_CODE.length)); 
+                    }
+                }
+                
+                processCommandLogic(commandInput);
+            };
+
+            const addOutputToHistory = (outputContent, isHtmlOutput = true, speed = TYPING_SPEED) => { 
+                 const newOutputEntry = {
+                    id: Date.now() + Math.random(),
+                    type: 'output', content: outputContent, 
+                    isTyping: speed > 0, 
+                    isHtml: isHtmlOutput,
+                    speed: speed // Pass speed to typewriter if needed
+                };
+                setHistory(prev => [...prev, newOutputEntry]);
+            };
+
+            // --- NEW: handleReboot function ---
+            const handleReboot = async () => {
+                setIsRebooting(true);
+                addOutputToHistory(`${S.string('System reboot sequence initiated...')}`);
+                
+                const rebootMessages = [
+                    `${S.comment('Unmounting file systems...')}`,
+                    `${S.comment('Disabling swap...')}`,
+                    `${S.string('Rebooting...')}`,
+                    `${S.punct('[ OK ]')} ${S.keyword('Reached target Shutdown.')}`,
+                    `${S.punct('...')}`,
+                    `${S.punct('KRNLBOOT v1.1 Initializing...')}`,
+                    `${S.string('Memory Test:')} ${S.keyword('PASS')}`,
+                    `${S.string('Loading Core Systems...')}`,
+                    `${WIN_ASCII_ART}`,
+                    `${S.title('Welcome to Kirati Rattanaporn - Terminal v1.1')}`,
+                    `Type ${S.cmd('help')} for a list of commands.`
+                ];
+
+                // Clear history before adding new reboot messages
+                // Use a functional update for setHistory if clearing immediately before adding
+                setHistory([]); 
+                
+                // Add messages with a delay between them using promises for sequencing
+                for (let i = 0; i < rebootMessages.length; i++) {
+                    await new Promise(resolve => {
+                        // Add message
+                        const message = rebootMessages[i];
+                         const newOutputEntry = {
+                            id: Date.now() + Math.random() + i, // Ensure unique ID
+                            type: 'output', content: message, 
+                            isTyping: TYPING_SPEED > 0, 
+                            isHtml: true
+                        };
+                        setHistory(prev => [...prev, newOutputEntry]);
+                        
+                        // Wait for typing to finish or a fixed delay
+                        const delay = TYPING_SPEED > 0 ? (message.length * TYPING_SPEED + 300) : 50;
+                        setTimeout(resolve, delay);
+                    });
+                }
+                setIsRebooting(false);
+            };
+
+
+            // --- UPDATED: processCommandLogic to handle new commands ---
+            const processCommandLogic = (commandInput) => {
+                let outputContent = "";
+                const parts = commandInput.toLowerCase().split(/\s+/);
+                const cmdToExecute = parts[0];
+                const args = parts.slice(1);
+
+                if (KNOWN_COMMANDS.includes(cmdToExecute)) {
+                    switch (cmdToExecute) {
+                        case 'help': outputContent = TARGET_HELP_OUTPUT; break;
+                        case 'whoami': outputContent = aboutMeOutput; break;
+                        case 'contact': outputContent = contactOutput; break;
+                        case 'interests': outputContent = interestsOutput; break;
+                        case 'achievements': outputContent = achievementsOutput; break;
+                        case 'projects': outputContent = projectsOutput; break;
+                        case 'clear': setHistory([]); return;
+                        case 'fortune':
+                            const randomIndex = Math.floor(Math.random() * FORTUNES.length);
+                            outputContent = `${S.keyword('Your fortune:')} ${S.string(FORTUNES[randomIndex])}`;
+                            break;
+                        case 'credits':
+                            outputContent = creditsOutput;
+                            break;
+                        case 'theme':
+                            if (args.length > 0 && THEMES[args[0]]) {
+                                applyTheme(args[0]);
+                                outputContent = `${S.string('Theme changed to:')} ${S.keyword(args[0])}`;
+                            } else {
+                                outputContent = `${S.error('Invalid theme.')} Available: ${Object.keys(THEMES).map(t => S.cmd(t)).join(', ')}.`;
+                            }
+                            break;
+                        // Add other known commands here
+                    }
+                } else if (cmdToExecute === 'reboot') { // Hidden command
+                    handleReboot(); // Special handling for reboot
+                    return;
+                } else if (cmdToExecute === 'banana') { // Hidden command
+                    const message = commandInput.substring(cmdToExecute.length).trim();
+                    const bananaLines = [...BANANA_ART];
+                    if (message) {
+                        bananaLines[1] = `         /  .  ${S.punct('<')} ${S.string(message.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}`;
+                        bananaLines[2] = `        / ./ `;
+                    }
+                    outputContent = S.ascii(bananaLines.join('\n'));
+
+                } else { // Command not found logic
+                    let closestMatch = null;
+                    let minDistance = 3; 
+
+                    KNOWN_COMMANDS.forEach(knownCmd => {
+                        const dist = levenshteinDistance(cmdToExecute, knownCmd);
+                        // Adjust minDistance and length checks for better suggestions
+                        if (dist < minDistance && dist < knownCmd.length / 1.5 && cmdToExecute.length > 1) { 
+                            minDistance = dist;
+                            closestMatch = knownCmd;
+                        }
+                    });
+
+                    outputContent = `${S.error('Command not found:')} ${S.cmd(cmdToExecute.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}<br/>`;
+                    if (closestMatch) {
+                        outputContent += `Did you mean ${S.cmd(closestMatch)}? <br/>`;
+                    }
+                    outputContent += `Type ${S.cmd('help')} for available commands.`;
+                }
+                if (outputContent) { // Only add if there's content (reboot handles its own output)
+                    addOutputToHistory(outputContent);
+                }
+            };
+
+            const handleTerminalClick = () => {
+                if (!isRebooting) inputRef.current?.focus();
+            };
+            
+            const onTypewriterFinish = (itemId) => {
+                setHistory(prevHistory => 
+                    prevHistory.map(item => 
+                        item.id === itemId ? { ...item, isTyping: false } : item
+                    )
+                );
+            };
+            
+            const isAnyOutputTyping = history.some(item => item.type === 'output' && item.isTyping);
+            
+            let displaySuggestionText = "";
+            if(suggestion && inputValue) {
+                const typedCommandPart = inputValue.split(" ")[0];
+                // Ensure suggestion is only for known commands
+                const remainingSuggestion = KNOWN_COMMANDS.find(cmd => cmd === typedCommandPart + suggestion);
+                if(remainingSuggestion){
+                    displaySuggestionText = suggestion;
+                }
+            }
+
+            return (
+                <div 
+                    className="w-full terminal-container // Updated class for theming
+                               rounded p-3 md:p-4 flex flex-col overflow-hidden cursor-text"
+                    style={{ maxWidth: '860px', height: '480px', fontSize: '1rem' }}
+                    onClick={handleTerminalClick}
+                >
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto terminal-output-container pr-1 space-y-0.5">
+                        {history.map(item => (
+                            <div key={item.id}>
+                                {item.type === 'input' ? (
+                                    <div className="input-line" dangerouslySetInnerHTML={{ __html: item.content }} />
+                                ) : (
+                                    item.isTyping ? (
+                                        <Typewriter 
+                                            text={item.content} 
+                                            speed={item.speed !== undefined ? item.speed : TYPING_SPEED} // Use item-specific speed or global
+                                            onFinished={() => onTypewriterFinish(item.id)}
+                                            isHtml={item.isHtml}
+                                        />
+                                    ) : ( 
+                                        <div className="output-line" dangerouslySetInnerHTML={{ __html: item.content.replace(/\n/g, '<br/>') }} />
+                                    )
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex items-center mt-1 shrink-0">
+                        <span className="mr-0.5 prompt" style={{color: "var(--color-terminal-prompt)"}}>{PROMPT_SYMBOL_DISPLAY}</span>
+                        <div className="terminal-input-area">
+                            <input
+                                ref={inputRef} type="text" value={inputValue}
+                                onChange={handleInputChange} onKeyDown={handleKeyDown}
+                                className="terminal-input"
+                                disabled={(isAnyOutputTyping && TYPING_SPEED > 0) || isRebooting} // Disable during reboot
+                                autoFocus spellCheck="false" autoComplete="off" aria-label="Terminal input"
+                            />
+                            {displaySuggestionText && <span className="terminal-input-suggestion">
+                                <span style={{opacity: 0}}>{inputValue.trim().split(" ")[0]}</span>
+                                {displaySuggestionText}
+                            </span>}
+                        </div>
+                         {!(isAnyOutputTyping && TYPING_SPEED > 0) && !isRebooting && <span className="blinking-cursor"></span>} {/* Hide cursor during reboot */}
+                    </div>
+                </div>
+            );
+        }
+
+        function updateClock() {
+            // ... (updateClock remains the same)
+            const clockElement = document.getElementById('clock');
+            if (clockElement) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                clockElement.textContent = timeString;
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+        
+        // --- NEW: Load initial theme after DOM is ready (or in Terminal useEffect) ---
+        // Moved theme loading into Terminal's useEffect for better React lifecycle management
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Terminal />);
+    </script>
+</body>
+</html>

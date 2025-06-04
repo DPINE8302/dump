@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Win's Portfolio - Netflix Style</title>
+    <script src="https://unpkg.com/scrollreveal"></script>
+    <style>
+        /* --- CSS Variables and Base Styles --- */
+        :root {
+            --netflix-red: #E50914;
+            --netflix-dark: #141414;
+            --netflix-gray: #808080;
+            --text-light: #f5f5f5;
+            --card-bg: #222;
+            --timeline-line-color: #444;
+            --header-height: 70px; /* Approximate header height for calculations */
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            background-color: var(--netflix-dark); 
+            color: var(--text-light); 
+            line-height: 1.6; 
+            padding-top: var(--header-height); 
+        }
+        
+        /* --- Typography & Links --- */
+        .container { width: 90%; max-width: 1200px; margin: 0 auto; }
+        h1, h2, h3, h4 { margin-bottom: 1rem; color: var(--text-light); }
+        h1 { font-size: 3.5rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+        h2 { font-size: 1.8rem; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.3rem; }
+        h4 { font-size: 1.4rem; font-weight: 500; margin-left: 5%; margin-bottom: 1rem; }
+        p { margin-bottom: 1rem; color: #ccc; }
+        a { color: var(--netflix-red); text-decoration: none; transition: color 0.2s ease-in-out; }
+        a:hover { text-decoration: underline; color: #ff3b45; }
+        img { max-width: 100%; height: auto; display: block; }
+
+        /* --- Progress Bar & Header --- */
+        #progress-bar { position: fixed; top: var(--header-height); left: 0; height: 5px; background-color: var(--netflix-red); width: 0%; z-index: 1000; transition: width 0.1s ease-out; }
+        #main-header { 
+            background-color: rgba(20, 20, 20, 0.9); 
+            padding: 1rem 0; 
+            position: fixed; 
+            width: 100%; 
+            top: 0; 
+            z-index: 999; 
+            transition: background-color 0.3s ease;
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+        }
+        #main-header .container { display: flex; justify-content: space-between; align-items: center; }
+        #logo { font-size: 2rem; font-weight: bold; color: var(--netflix-red); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0; }
+        #main-header nav ul { list-style: none; display: flex; }
+        #main-header nav ul li { margin-left: 20px; }
+        #main-header nav ul li a { color: var(--text-light); font-weight: 500; transition: color 0.3s ease; }
+        #main-header nav ul li a:hover, 
+        #main-header nav ul li a.active { color: var(--netflix-red); text-decoration: none; }
+        #main-header.scrolled { background-color: var(--netflix-dark); box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+
+        /* --- Hero Billboard --- */
+        #hero-billboard { 
+            height: calc(85vh - var(--header-height)); 
+            min-height: 450px; 
+            background-size: cover; 
+            background-position: center center; 
+            display: flex; 
+            align-items: flex-end; 
+            padding-bottom: 5%; 
+            position: relative; 
+            color: var(--text-light); 
+        }
+        #hero-billboard .overlay-content { max-width: 50%; padding-left: 5%; }
+        #hero-billboard p { font-size: 1.2rem; margin-bottom: 1.5rem; color: #e0e0e0; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
+
+        /* --- Content Rows & Section Headers --- */
+        .content-row { padding: 40px 0; } 
+        
+        .section-header-controls { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-left: 5%; 
+            margin-right: 5%; 
+            margin-bottom: 1.5rem; 
+            gap: 1rem; 
+        }
+        .section-header-controls h2 { 
+            font-size: 1.5rem; 
+            margin-bottom: 0; 
+            margin-left: 0; 
+            flex-grow: 1; 
+            min-width: 0; 
+        }
+        
+        /* --- Achievements Toggle Switch --- */
+        .achievements-view-switch {
+            position: relative; display: inline-block;
+            width: 160px; height: 36px;
+            background-color: var(--card-bg); border-radius: 18px;
+            border: 1px solid #555; cursor: pointer; padding: 3px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+            flex-shrink: 0; 
+        }
+        .achievements-toggle-input { opacity: 0; width: 0; height: 0; }
+        .achievements-toggle-label {
+            display: flex; align-items: center; justify-content: space-around;
+            width: 100%; height: 100%; position: relative;
+            border-radius: 15px; transition: background-color 0.3s ease;
+        }
+        .achievements-toggle-label .toggle-option {
+            font-size: 0.8rem; font-weight: 500; color: var(--netflix-gray);
+            z-index: 1; padding: 0 8px; transition: color 0.3s ease;
+            user-select: none; flex-grow: 1; text-align: center;
+            white-space: nowrap; 
+        }
+        .achievements-toggle-label::before {
+            content: ""; position: absolute; top: 0; left: 0;
+            width: 50%; height: 100%;
+            background-color: var(--netflix-red); border-radius: 15px;
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            z-index: 0; box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .achievements-toggle-input:checked + .achievements-toggle-label::before { transform: translateX(100%); }
+        .achievements-toggle-input + .achievements-toggle-label .cards-option { color: var(--text-light); }
+        .achievements-toggle-input:checked + .achievements-toggle-label .cards-option { color: var(--netflix-gray); }
+        .achievements-toggle-input:checked + .achievements-toggle-label .timeline-option { color: var(--text-light); }
+
+        /* --- Horizontal Scrolling Row Content --- */
+        .row-content { 
+            display: flex; 
+            overflow-x: auto; 
+            overflow-y: hidden; 
+            padding: 1rem 0 1rem 5%; 
+            scrollbar-width: thin; 
+            scrollbar-color: var(--netflix-red) var(--card-bg); 
+        }
+        .row-content::-webkit-scrollbar { height: 8px; }
+        .row-content::-webkit-scrollbar-track { background: var(--card-bg); border-radius: 4px; }
+        .row-content::-webkit-scrollbar-thumb { background: var(--netflix-red); border-radius: 4px; }
+        .row-content::-webkit-scrollbar-thumb:hover { background: #b00710; }
+
+        /* --- General Card Styles --- */
+        .card { 
+            background-color: var(--card-bg); 
+            border-radius: 5px; 
+            margin-right: 15px; 
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+            flex-shrink: 0; 
+            overflow: hidden; 
+        }
+        .card:hover { 
+            transform: scale(1.05); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4); 
+            z-index: 10; 
+        }
+        .card:last-child { margin-right: 5%; } 
+        
+        /* Specific Card Type Styles */
+        .about-card { width: 90%; max-width: 800px; padding: 25px; background-color: #1c1c1c; margin-left: 5%; margin-right: 5%; }
+        .about-card h3 { color: var(--netflix-red); }
+
+        .interest-card { width: 220px; padding: 20px; text-align: center; background-color: #2a2a2a; }
+        .interest-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--text-light); }
+        .interest-card p { font-size: 0.9rem; color: var(--netflix-gray); }
+
+        .achievement-card { width: 280px; height: 200px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; background-color: #2a2a2a; }
+        .achievement-card .date { font-size: 0.8rem; font-weight: bold; color: var(--netflix-red); align-self: flex-start; margin-bottom: 0.5rem; }
+        .achievement-card h3 { font-size: 1.1rem; color: var(--text-light); margin-bottom: 0.5rem; }
+        .achievement-card p { font-size: 0.9rem; color: #aaa; flex-grow: 1; margin-bottom: 0.5rem; }
+
+        /* --- Achievements Timeline View --- */
+        #achievements-timeline-view { list-style: none; padding: 20px 0; position: relative; margin-left: 5%; margin-right: 5%; }
+        #achievements-timeline-view::before { 
+            content: " "; position: absolute; top: 0; bottom: 0; 
+            width: 3px; background-color: var(--timeline-line-color); 
+            left: 40px; margin-left: -1.5px; 
+        }
+        #achievements-timeline-view .event { margin: 0 0 40px 0; padding-left: 80px; position: relative; }
+        #achievements-timeline-view .event::before { 
+            content: " "; position: absolute; left: 40px; top: 5px; 
+            width: 15px; height: 15px; margin-left: -9px; 
+            background-color: var(--netflix-red); border-radius: 50%; 
+            border: 3px solid var(--netflix-dark); z-index: 1; 
+        }
+        #achievements-timeline-view .event::after { 
+            content: attr(data-date); position: absolute; left: -15px; top: 3px; 
+            font-weight: bold; color: var(--netflix-gray); 
+            width: 40px; text-align: right; font-size: 1.1em; 
+        }
+        #achievements-timeline-view .event h3 { font-size: 1.2rem; color: var(--text-light); margin-bottom: 0.3rem; }
+        #achievements-timeline-view .event p { font-size: 0.95rem; color: #bbb; margin-bottom: 0; }
+
+        /* --- Video & Photography Cards --- */
+        .video-card { width: 90%; max-width: 800px; margin-left: 5%; margin-right: 5%; background-color: #000; }
+        .video-card iframe { width: 100%; height: 450px; border: none; display: block; }
+        
+        .photo-card { width: 300px; height: 200px; } 
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .photo-card-large { width: 450px; height: auto; background-color: #2a2a2a; } 
+        .photo-card-large img { width: 100%; height: 250px; object-fit: cover; }
+        .photo-card-large .caption { padding: 15px; }
+        .photo-card-large .caption h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .photo-card-large .caption p { font-size: 0.9rem; color: #ccc; }
+
+        /* --- Contact Section --- */
+        #contact-row .row-content { padding-left: 5%; flex-wrap: wrap; justify-content: flex-start; }
+        .contact-button { 
+            display: inline-block; background-color: var(--netflix-red); 
+            color: var(--text-light); padding: 10px 20px; 
+            border-radius: 5px; margin: 10px 15px 10px 0; 
+            font-weight: bold; text-align: center; min-width: 180px; 
+            transition: background-color 0.3s ease, transform 0.2s ease; 
+        }
+        .contact-button:hover { 
+            background-color: #b00710; text-decoration: none; 
+            color: var(--text-light); transform: translateY(-2px); 
+        }
+        #contact-row .contact-intro-text { width: 100%; margin-left: 5%; margin-right:5%; margin-bottom: 1rem; padding-right: 0;}
+
+        /* --- Footer --- */
+        footer { text-align: center; padding: 30px 0; background-color: #101010; margin-top: 40px; border-top: 1px solid #303030; }
+        footer p { color: var(--netflix-gray); font-size: 0.9rem; margin-bottom: 0;}
+        
+        /* --- ScrollReveal Helper --- */
+        .sr-hidden { visibility: hidden; } 
+
+        /* --- Video Gallery (ChannelFlix) --- */
+        .video-item-card { width: 280px; height: auto; cursor: pointer; position: relative; } 
+        .video-item-card img { width: 100%; height: 157.5px; object-fit: cover; display: block; border-top-left-radius: 5px; border-top-right-radius: 5px; }
+        .video-item-card .video-info-overlay { 
+            padding: 10px; 
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); 
+            position: absolute; bottom: 0; left: 0; width: 100%; 
+            opacity: 0; transition: opacity 0.3s ease; 
+            color: var(--text-light); 
+            border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; 
+        }
+        .video-item-card:hover .video-info-overlay { opacity: 1; }
+        .video-item-card .video-title-thumb { font-size: 1em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0; }
+        #video-gallery-container .category-video-row { margin-bottom: 20px; }
+        #video-gallery-container .category-video-row:last-child .row-content { padding-bottom: 1rem; }
+
+        /* --- Video Modal --- */
+        .modal { 
+            display: flex; position: fixed; z-index: 1001; 
+            left: 0; top: 0; width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.9); 
+            justify-content: center; align-items: center; 
+            opacity: 0; visibility: hidden; transform: scale(0.95); 
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0.3s; 
+        }
+        .modal.active { 
+            opacity: 1; visibility: visible; transform: scale(1); 
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0s; 
+        }
+        .modal-content { 
+            background-color: #181818; margin: auto; padding: 0; 
+            border: none; width: 85%; max-width: 960px; 
+            position: relative; border-radius: 8px; 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6); overflow: hidden; 
+        }
+        .modal-video-title-text { 
+            color: var(--text-light); font-size: 1.2em; 
+            padding: 15px 50px 12px 20px; margin-bottom: 0; 
+            font-weight: 500; background-color: #202020; 
+        }
+        .video-player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background-color: #000; }
+        .video-player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .modal-content .close-button { 
+            position: absolute; top: 10px; right: 12px; 
+            font-size: 26px; color: var(--netflix-gray); 
+            background-color: transparent; border-radius: 50%; 
+            width: 38px; height: 38px; line-height: 36px; 
+            text-align: center; cursor: pointer; border: none; padding: 0; 
+            transition: color 0.2s, background-color 0.2s, transform 0.2s; 
+        }
+        .modal-content .close-button:hover { 
+            color: var(--text-light); background-color: rgba(255,255,255,0.1); transform: scale(1.1); 
+        }
+        
+        /* --- Easter Egg Specific Styles --- */
+        /* CLI Terminal Styles */
+        #cli-toggle {
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 15px;
+            display: inline-block; 
+            user-select: none;
+        }
+        #cli-toggle:hover { color: var(--netflix-red); }
+        #terminal-overlay {
+            position: fixed; bottom: 0; left: 0;
+            width: 100%; height: 40vh; 
+            background-color: rgba(10, 10, 10, 0.95);
+            border-top: 2px solid var(--netflix-red);
+            z-index: 1002; 
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            display: flex; flex-direction: column;
+            padding: 10px; box-sizing: border-box;
+            overflow-y: auto;
+        }
+        #terminal-overlay.terminal-visible { transform: translateY(0); }
+        #terminal {
+            font-family: 'Courier New', Courier, monospace; font-size: 0.9rem;
+            color: #0f0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+        }
+        #terminal-output {
+            flex-grow: 1; overflow-y: auto;
+            word-wrap: break-word; padding-bottom: 5px;
+        }
+        #terminal-output span { display: block; margin-bottom: 3px; }
+        .terminal-input-line { display: flex; align-items: center; }
+        .terminal-prompt { color: #0f0; margin-right: 5px; white-space: nowrap; }
+        #terminal-input {
+            background-color: transparent; border: none; color: #0f0; 
+            font-family: 'Courier New', Courier, monospace; font-size: 0.9rem;
+            outline: none; flex-grow: 1; caret-color: #0f0;
+        }
+
+        /* Achievement Burst */
+        #achievement-burst-trigger {
+            position: fixed; bottom: 20px; left: 20px; 
+            font-size: 1.5rem; cursor: pointer; z-index: 100; 
+            display: none; /* Initially hidden, shown by JS */
+            color: gold;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+         #achievement-burst-trigger:hover { transform: scale(1.2); }
+
+        .confetti {
+            position: fixed; width: 8px; height: 16px;
+            background-color: gold; opacity: 0;
+            animation: fall 3s linear forwards;
+            z-index: 1005; border-radius: 2px;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        #achievement-factoid-popup {
+            position: fixed; bottom: 50px; left: 50px;
+            background-color: var(--card-bg); color: var(--text-light);
+            padding: 15px; border-radius: 5px;
+            box-shadow: 0 0 15px rgba(255,215,0,0.5); 
+            z-index: 1006; opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            max-width: 300px;
+        }
+        #achievement-factoid-popup.visible { opacity: 1; transform: translateY(0); }
+
+        /* Easter Egg Hunt Pin Visual Cue */
+        .photo-card[data-pin-id]:hover {
+            outline: 2px dashed var(--netflix-red); 
+            cursor: help; 
+        }
+        .pin-popup {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--netflix-dark);
+            padding: 20px; border: 1px solid var(--netflix-red);
+            border-radius: 8px; z-index: 1003;
+            text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            max-width: 90%; width: 400px;
+        }
+        .pin-popup img { margin: 10px auto; max-height: 150px; border-radius: 4px; }
+        .pin-popup button {
+            background-color: var(--netflix-red); color: white;
+            border: none; padding: 8px 15px; border-radius: 4px;
+            cursor: pointer; margin-top: 15px;
+        }
+        /* Secret Clip Overlay (reuses .modal styles but with overrides if needed) */
+        #secret-clip-overlay .modal-content { text-align: center; padding: 20px; }
+        #secret-clip-overlay #close-secret-clip {
+             position: absolute; top: 15px; right: 15px; 
+             font-size: 24px; color: var(--text-light); 
+             background: transparent; border: none; cursor: pointer;
+             padding: 5px; line-height: 1;
+        }
+
+
+        /* --- Responsive Design --- */
+        @media (max-width: 768px) {
+            body { padding-top: 0; } 
+            #progress-bar { top: 0; } 
+            #main-header { 
+                position: static; 
+                height: auto;
+                padding: 0.75rem 0;
+            }
+            #main-header .container { flex-direction: column; align-items: flex-start; } 
+            #logo { margin-bottom: 0.5rem; }
+            #main-header nav ul { padding-left: 0; flex-wrap: wrap; } 
+            #main-header nav ul li { margin-left: 0; margin-right: 15px; margin-bottom: 5px; }
+            
+            #hero-billboard { height: 70vh; min-height: 400px; }
+            #hero-billboard h1 { font-size: 2.5rem; } 
+            #hero-billboard p { font-size: 1rem; } 
+            #hero-billboard .overlay-content { max-width: 80%; }
+            
+            .section-header-controls h2 { font-size: 1.3rem; } 
+            h4 { font-size: 1.2rem; }
+            .achievements-view-switch { width: 140px; height: 32px; } 
+            .achievements-toggle-label .toggle-option { font-size: 0.75rem; }
+            
+            .card { margin-right: 10px; }
+            .interest-card { width: 180px; }
+            
+            #achievements-timeline-view::before { left: 20px; } 
+            #achievements-timeline-view .event { padding-left: 50px; }
+            #achievements-timeline-view .event::before { left: 20px; } 
+            #achievements-timeline-view .event::after { left: -25px; font-size: 1em;} 
+            
+            .photo-card { width: 220px; height: 150px; } 
+            .photo-card-large { width: 90%; margin: 0 auto 15px auto; }
+            .video-item-card { width: 220px; } 
+            .video-item-card img { height: 123.75px; }
+            .video-card iframe { height: 300px; }
+            
+            .modal-content { width: 90%; }
+            #secret-clip-overlay .modal-content { width: 90%;}
+            .modal-video-title-text { font-size: 1.1em; padding: 12px 45px 10px 15px; }
+            .modal-content .close-button { top: 8px; right: 8px; width: 34px; height: 34px; line-height: 32px; font-size: 24px;}
+            
+            #contact-row .row-content { justify-content: center; } 
+            .contact-button { width: calc(90% - 10px); margin-right: 0; margin-left: 5%;}
+            #contact-row .contact-intro-text { width: 90%; margin-left: 5%;}
+
+            #terminal-overlay { height: 50vh; }
+        }
+
+        @media (max-width: 480px) {
+            #main-header nav ul li a { font-size: 0.9rem; }
+            #hero-billboard { height: 60vh; } 
+            #hero-billboard h1 { font-size: 2rem; }
+            
+            .section-header-controls { flex-direction: column; align-items: flex-start; }
+            .section-header-controls h2 { margin-bottom: 0.75rem; } 
+            .achievements-view-switch { width: 100%; } 
+            
+            .row-content { padding-left: 3%; } 
+            .content-row .section-header-controls h2, 
+            .content-row h4 { margin-left: 3%; } 
+            .card:last-child { margin-right: 3%; }
+            
+            .interest-card { width: calc(50% - 5px); margin-bottom: 10px; } 
+            .interest-card:nth-child(odd) { margin-right: 10px;}
+            .interest-card:nth-child(even) { margin-right: 3%;} 
+            
+            #achievements-timeline-view { margin-left: 3%; margin-right: 3%; }
+            #achievements-timeline-view::before { left: 15px; }
+            #achievements-timeline-view .event { padding-left: 40px; }
+            #achievements-timeline-view .event::before { left: 15px; width: 12px; height: 12px; margin-left: -7px; border-width: 2px;}
+            #achievements-timeline-view .event::after { left: -30px; font-size: 0.9em;}
+            
+            .video-item-card { width: 180px; } 
+            .video-item-card img { height: 101.25px; }
+            .modal-content { width: 95%; border-radius: 6px; }
+            #secret-clip-overlay .modal-content { width: 95%;}
+            .modal-video-title-text { font-size: 1em; padding: 10px 40px 8px 12px; }
+            .contact-button { width: calc(94% - 10px); margin-left: 3%;}
+            #contact-row .contact-intro-text { width: 94%; margin-left: 3%;}
+
+            #achievement-burst-trigger { font-size: 1.3rem; bottom: 15px; left: 15px;}
+            #achievement-factoid-popup { bottom: 15px; left: 15px; width: calc(100% - 30px); font-size: 0.9rem;}
+
+            .pin-popup { width: calc(100% - 20px); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header id="main-header">
+        <div class="container">
+            <div id="logo">WIN</div>
+            <nav aria-label="Main navigation">
+                <ul>
+                    <li><a href="#hero-billboard" class="nav-link">Home</a></li>
+                    <li><a href="#about-row" class="nav-link">About</a></li>
+                    <li><a href="#achievements-row" class="nav-link">Achievements</a></li>
+                    <li><a href="#featured-video-row" class="nav-link">Video</a></li>
+                    <li><a href="#channelflix-gallery-row" class="nav-link">Gallery</a></li>
+                    <li><a href="#photography-row" class="nav-link">Photography</a></li>
+                    <li><a href="#contact-row" class="nav-link">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <!-- Progress Bar (under header) -->
+    <div id="progress-bar"></div>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="hero-billboard" style="background-image: linear-gradient(to top, rgba(20, 20, 20, 1) 0%, rgba(20, 20, 20, 0) 60%), url('Pic6.webp');" role="banner">
+            <div class="overlay-content">
+                <h1>Win's Portfolio</h1>
+                <p>No risk. No story.</p>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about-row" class="content-row" role="region" aria-labelledby="about-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="about-heading">About Me</h2>
+                </div>
+                <div class="about-card sr-hidden">
+                    <p>Hello, I'm Win (Kirati Rattanaporn), a passionate technology and creative enthusiast from Bangkok, Thailand. Currently in Grade 10, I have a strong interest in technology, astronomy, photography, and film. Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. My goal is to transfer to SPSM School to study multimedia and later pursue a degree at Chulalongkorn University's Faculty of Communication Arts. <br><br> You can learn more about me on my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer">Wikipedia page</a>.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Creative Interests Section -->
+        <section id="creative-interests-row" class="content-row" role="region" aria-labelledby="interests-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="interests-heading">Creative Interests</h2>
+                </div>
+            </div>
+            <div class="row-content sr-hidden">
+                <div class="card interest-card"><h3>Filmmaking</h3><p>Crafting stories and bringing visions to life through video.</p></div>
+                <div class="card interest-card"><h3>Technology</h3><p>Exploring new tech, coding, and building innovative projects like robotics.</p></div>
+                <div class="card interest-card"><h3>Photography</h3><p>Capturing moments, perspectives, and the beauty of the world.</p></div>
+                <div class="card interest-card"><h3>Astronomy</h3><p>Gazing at the cosmos and understanding our place in the universe.</p></div>
+            </div>
+        </section>
+
+        <!-- Achievements Section -->
+        <section id="achievements-row" class="content-row" role="region" aria-labelledby="achievements-heading">
+            <div class="container">
+                <div class="section-header-controls"> 
+                    <h2 id="achievements-heading">Achievements & Awards</h2>
+                    <!-- Achievement Burst Trigger can be placed here or use the fixed one from JS -->
+                    <div class="achievements-view-switch">
+                        <input type="checkbox" id="achievements-toggle-checkbox" class="achievements-toggle-input" aria-label="Toggle achievements view between cards and timeline">
+                        <label for="achievements-toggle-checkbox" class="achievements-toggle-label">
+                            <span class="toggle-option cards-option">Cards</span>
+                            <span class="toggle-option timeline-option">Timeline</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="achievements-cards-view" class="row-content"> 
+                    <div class="card achievement-card"><span class="date">2024</span><h3>National Robotics Gold</h3><p>Secured a prestigious gold medal at the national robotics competition.</p></div>
+                    <div class="card achievement-card"><span class="date">2024</span><h3>National Robotics Gold (Repeat)</h3><p>Continued success with another national gold in robotics.</p></div>
+                    <div class="card achievement-card"><span class="date">2024</span><h3>Multi-Skills Gold (EP Open House)</h3><p>Showcased versatility with a gold award in the multi-skills competition.</p></div>
+                    <div class="card achievement-card"><span class="date">2024</span><h3>Regional English Contest: Silver</h3><p>Earned a silver award, highlighting strong English language proficiency.</p></div>
+                    <div class="card achievement-card"><span class="date">2024</span><h3>Silver Medal: 200m Sprint</h3><p>Won silver in a competitive 200m race (0.69s from gold).</p></div>
+                    <div class="card achievement-card"><span class="date">2024</span><h3>Top 4 Finish: Running</h3><p>Demonstrated perseverance with a strong fourth-place finish in running.</p></div>
+                    <div class="card achievement-card"><span class="date">2023</span><h3>Gold: Mathematics Project</h3><p>Excellence in mathematics recognized at the Southern EP Open House.</p></div>
+                    <div class="card achievement-card"><span class="date">2023</span><h3>Robotics Gold (4th)</h3><p>Further cemented expertise with a fourth gold medal in robotics.</p></div>
+                    <div class="card achievement-card"><span class="date">2023</span><h3>Robotics Gold (3rd)</h3><p>Achieved a third gold medal, showcasing consistent robotics skill.</p></div>
+                    <div class="card achievement-card"><span class="date">2023</span><h3>Silver Medal: School Athletics</h3><p>Continued athletic success with a silver medal in running.</p></div>
+                    <div class="card achievement-card"><span class="date">2023</span><h3>English Contest Recognition</h3><p>Awarded for strong performance in an English language contest.</p></div>
+                    <div class="card achievement-card"><span class="date">2022</span><h3>Robotics Gold (2nd)</h3><p>Developed innovation skills, securing another robotics gold.</p></div>
+                    <div class="card achievement-card"><span class="date">2022</span><h3>First Robotics Gold</h3><p>Marked the start of a tech journey with a debut gold in robotics.</p></div>
+                    <div class="card achievement-card"><span class="date">2022</span><h3>Gold Medal: School Sprint</h3><p>Showcased speed and determination winning gold in running.</p></div>
+                </div>
+                <ul id="achievements-timeline-view" class="timeline"> 
+                    <li class="event" data-date="2022"><h3>Gold Medal: School Sprint</h3><p>Showcased speed and determination winning gold in running.</p></li>
+                    <li class="event" data-date="2022"><h3>First Robotics Gold</h3><p>Marked the start of a tech journey with a debut gold in robotics.</p></li>
+                    <li class="event" data-date="2022"><h3>Robotics Gold (2nd)</h3><p>Developed innovation skills, securing another robotics gold.</p></li>
+                    <li class="event" data-date="2023"><h3>English Contest Recognition</h3><p>Awarded for strong performance in an English language contest.</p></li>
+                    <li class="event" data-date="2023"><h3>Silver Medal: School Athletics</h3><p>Continued athletic success with a silver medal in running.</p></li>
+                    <li class="event" data-date="2023"><h3>Robotics Gold (3rd)</h3><p>Achieved a third gold medal, showcasing consistent robotics skill.</p></li>
+                    <li class="event" data-date="2023"><h3>Robotics Gold (4th)</h3><p>Further cemented expertise with a fourth gold medal in robotics.</p></li>
+                    <li class="event" data-date="2023"><h3>Gold: Mathematics Project</h3><p>Excellence in mathematics recognized at the Southern EP Open House.</p></li>
+                    <li class="event" data-date="2024"><h3>National Robotics Gold</h3><p>Secured a prestigious gold medal at the national robotics competition.</p></li>
+                    <li class="event" data-date="2024"><h3>National Robotics Gold (Repeat)</h3><p>Continued success with another national gold in robotics.</p></li>
+                    <li class="event" data-date="2024"><h3>Silver Medal: 200m Sprint</h3><p>Won silver in a competitive 200m race (0.69s from gold).</p></li>
+                    <li class="event" data-date="2024"><h3>Top 4 Finish: Running</h3><p>Demonstrated perseverance with a strong fourth-place finish in running.</p></li>
+                    <li class="event" data-date="2024"><h3>Regional English Contest: Silver</h3><p>Earned a silver award, highlighting strong English language proficiency.</p></li>
+                    <li class="event" data-date="2024"><h3>Multi-Skills Gold (EP Open House)</h3><p>Showcased versatility with a gold award in the multi-skills competition.</p></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Featured Video Section -->
+        <section id="featured-video-row" class="content-row" role="region" aria-labelledby="featured-video-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="featured-video-heading">Feature Video</h2>
+                </div>
+                <div class="card video-card sr-hidden">
+                    <iframe src="https://www.youtube.com/embed/BMhot-xCYmk" title="Feature Video: Music Video Concept" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
+        </section>
+
+        <!-- ChannelFlix Gallery Section -->
+        <section id="channelflix-gallery-row" class="content-row" role="region" aria-labelledby="channelflix-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="channelflix-heading">ChannelFlix Gallery</h2>
+                </div>
+            </div>
+            <div id="video-gallery-container" class="sr-hidden">
+                <!-- Video gallery items will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Photography Showcase Section -->
+        <section id="photography-row" class="content-row" role="region" aria-labelledby="photography-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="photography-heading">Photography Showcase</h2>
+                </div>
+                <p class="section-subtitle sr-hidden" style="margin-left:5%; color: #bbb;">Capturing moments that speak louder than words.</p>
+            </div>
+            <div class="row-content sr-hidden">
+                <div class="card photo-card-large"><img src="Pic10.webp" alt="Abstract light trails representing technology in photography"><div class="caption"><h3>Technology and Creativity</h3><p>Combining technology with creativity allows for endless possibilities in visual storytelling.</p></div></div>
+                <div class="card photo-card-large"><img src="Pic9.webp" alt="Silhouette against a sunset, emphasizing storytelling in photography"><div class="caption"><h3>The Art of Storytelling</h3><p>Photography is not just about capturing images; it’s about telling stories through my lens.</p></div></div>
+            </div>
+        </section>
+
+        <!-- Collage Gallery Section (for Easter Egg Hunt) -->
+        <section id="collage-row" class="content-row" role="region" aria-labelledby="collage-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="collage-heading">Gallery</h2>
+                </div>
+            </div>
+            <div class="row-content sr-hidden">
+                <div class="card photo-card" data-pin-id="pin1_robotics_venue"><img src="Pic2.webp" alt="Gallery: Robotics Venue Snapshot"></div>
+                <div class="card photo-card" data-pin-id="pin2_film_fest"><img src="Pic3.webp" alt="Gallery: Film Festival Memory"></div>
+                <div class="card photo-card"><img src="Pic4.webp" alt="Gallery image 4"></div>
+                <div class="card photo-card"><img src="Pic5.webp" alt="Gallery image 5"></div>
+                <div class="card photo-card"><img src="Pic6.webp" alt="Gallery image 6 - hero image repeat"></div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact-row" class="content-row" role="region" aria-labelledby="contact-heading">
+            <div class="container">
+                <div class="section-header-controls" style="justify-content: flex-start;">
+                    <h2 id="contact-heading">Contact</h2>
+                </div>
+                <p class="contact-intro-text sr-hidden">Feel free to reach out to me through the following platforms:</p>
+            </div>
+            <div class="row-content sr-hidden" style="padding-left: 5%;">
+                <a href="https://www.instagram.com/Win.rn" target="_blank" rel="noopener noreferrer" class="contact-button">Instagram (@Win.rn)</a>
+                <a href="https://www.instagram.com/Win.albums" target="_blank" rel="noopener noreferrer" class="contact-button">Photography Instagram (@Win.albums)</a>
+                <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" rel="noopener noreferrer" class="contact-button">YouTube Channel</a>
+                <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="contact-button">Wikipedia Biography</a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer with CLI Toggle -->
+    <footer>
+        <div class="container">
+            <p>&copy; <span id="currentYear"></span> Win. All rights reserved. Netflix-style concept. <span id="cli-toggle" title="Open Terminal" role="button" tabindex="0" aria-expanded="false" aria-controls="terminal-overlay">&gt;_</span></p>
+        </div>
+        <div id="terminal-overlay" class="terminal-hidden" role="dialog" aria-modal="true" aria-labelledby="terminal-heading">
+            <div id="terminal">
+                <h3 id="terminal-heading" class="sr-only">Command Line Interface</h3> <!-- sr-only class would hide it visually but make it available for screen readers -->
+                <div id="terminal-output">
+                    <span>Welcome to Win's CLI. Type 'help' for commands.</span><br>
+                </div>
+                <div class="terminal-input-line">
+                    <label for="terminal-input" class="sr-only">Terminal Input</label>
+                    <span class="terminal-prompt">WIN@PORTFOLIO:$ ~ </span>
+                    <input type="text" id="terminal-input" autofocus spellcheck="false">
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Video Modal -->
+    <div id="videoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalVideoTitle">
+        <div class="modal-content">
+            <button class="close-button" id="closeModalButton" aria-label="Close video player">&times;</button>
+            <h3 id="modalVideoTitle" class="modal-video-title-text">Video Title</h3>
+            <div id="youtubePlayerContainer" class="video-player-container">
+                <!-- YouTube iframe will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Secret Clip Overlay (for console command) -->
+    <div id="secret-clip-overlay" class="modal" role="dialog" aria-modal="true" aria-labelledby="secret-clip-heading" style="display:none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.9);">
+        <div class="modal-content" style="width: 70%; max-width: 800px;">
+            <button id="close-secret-clip" aria-label="Close secret clip">&times;</button>
+            <h3 id="secret-clip-heading" style="margin-bottom: 15px;">Behind The Scenes!</h3>
+            <p>This is where a fun blooper clip would go! <br/> For now, here's a fun fact: Win loves discovering hidden details!</p>
+            <img src="Pic5.webp" alt="Secret fun image - a happy coding duck" style="max-width: 80%; margin-top: 15px; border-radius: 4px;">
+        </div>
+    </div>
+    
+    <!-- Achievement Burst Trigger (fixed emoji icon) -->
+    <span id="achievement-burst-trigger" role="button" tabindex="0" aria-label="Activate achievement surprise" title="Hover for a surprise!">🏅</span>
+
+
+    <script>
+    // --- CSS class for screen-reader only content ---
+    const srOnlyStyle = document.createElement('style');
+    srOnlyStyle.textContent = `
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    `;
+    document.head.appendChild(srOnlyStyle);
+
+    // --- DOM Element Selectors (Grouped for clarity) ---
+    const progressBar = document.getElementById("progress-bar");
+    const mainHeader = document.getElementById('main-header');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('main section[id]');
+    
+    const videoGalleryContainer = document.getElementById('video-gallery-container');
+    const videoModal = document.getElementById('videoModal');
+    const closeModalButton = document.getElementById('closeModalButton');
+    const youtubePlayerContainer = document.getElementById('youtubePlayerContainer');
+    const modalVideoTitleElement = document.getElementById('modalVideoTitle');
+    
+    const achievementsToggleCheckbox = document.getElementById('achievements-toggle-checkbox');
+    const achievementsCardsViewEl = document.getElementById('achievements-cards-view'); 
+    const achievementsTimelineViewEl = document.getElementById('achievements-timeline-view');
+    
+    const currentYearSpan = document.getElementById('currentYear');
+
+    // Easter Egg Elements
+    const cliToggle = document.getElementById('cli-toggle');
+    const terminalOverlay = document.getElementById('terminal-overlay');
+    const terminalInput = document.getElementById('terminal-input');
+    const terminalOutput = document.getElementById('terminal-output');
+    const achievementBurstTrigger = document.getElementById('achievement-burst-trigger');
+    const secretClipOverlay = document.getElementById('secret-clip-overlay');
+    const closeSecretClipButton = document.getElementById('close-secret-clip');
+    const pinnedItems = document.querySelectorAll('[data-pin-id]');
+    let foundPins = new Set();
+    const totalPins = 2; // IMPORTANT: Adjust if you change the number of pins with data-pin-id
+    const wallpaperRewardUrl = 'Pic_wallpaper.webp'; // IMPORTANT: Replace with your actual wallpaper image path
+
+    // --- ScrollReveal Initialization ---
+    const sr = ScrollReveal({
+        origin: 'bottom', distance: '50px', duration: 800, delay: 200,
+        easing: 'cubic-bezier(0.5, 0, 0, 1)', reset: false, viewFactor: 0.1,
+        mobile: true, useDelay: 'always',
+        beforeReveal: function (el) { 
+            if (el.classList.contains('sr-hidden')) {
+                el.classList.remove('sr-hidden'); 
+            }
+        }
+    });
+
+    // --- Core Functions ---
+    function updateProgressBarAndHeader() {
+        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = (winScroll / height) * 100;
+        
+        if (progressBar) progressBar.style.width = scrolled + "%";
+        
+        if (mainHeader) {
+            const headerActualHeight = mainHeader.offsetHeight; 
+            if (progressBar) progressBar.style.top = headerActualHeight + 'px';
+
+            if (window.pageYOffset > 50 && mainHeader.style.position === 'fixed') { 
+                mainHeader.classList.add('scrolled');
+            } else {
+                mainHeader.classList.remove('scrolled');
+            }
+        }
+        updateActiveNavLink();
+    }
+
+    function updateActiveNavLink() {
+        let currentSectionId = '';
+        const headerHeightOffset = (mainHeader && mainHeader.style.position === 'fixed' ? mainHeader.offsetHeight : 0) + 30; 
+
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - headerHeightOffset;
+            if (window.pageYOffset >= sectionTop) { 
+                currentSectionId = section.getAttribute('id'); 
+            }
+        });
+
+        navLinks.forEach(a => {
+            a.classList.remove('active');
+            const href = a.getAttribute('href');
+            if (href && href.substring(1) === currentSectionId) { 
+                a.classList.add('active'); 
+            }
+        });
+        
+        const firstSectionTop = sections[0] ? sections[0].offsetTop - headerHeightOffset : 200;
+        const homeLink = document.querySelector('a.nav-link[href="#hero-billboard"]');
+        if (window.pageYOffset < firstSectionTop ) {
+             if (!document.querySelector('.nav-link.active') && homeLink) {
+                homeLink.classList.add('active');
+             }
+        } else if (!currentSectionId && window.pageYOffset < firstSectionTop && homeLink) {
+            homeLink.classList.add('active');
+        }
+    }
+
+    function smoothScrollToSection(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+            const headerOffset = (mainHeader && mainHeader.style.position === 'fixed' ? mainHeader.offsetHeight : 0);
+            const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
+            const offsetPosition = elementPosition - headerOffset - 20; 
+            window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+        }
+    }
+
+    // --- Video Gallery & Modal Functions ---
+    const videosData = [
+        { id: "ViMLvE112jM", title: "School Project: Presentation", category: "School Projects" }, { id: "npwdwAmkcVI", title: "School Project: Short Film", category: "School Projects" },
+        { id: "D8CG4B3lOys", title: "School Project: Documentary", category: "School Projects" }, { id: "7GiZriajOks", title: "School Project: Animation", category: "School Projects" },
+        { id: "BMhot-xCYmk", title: "Music Video Concept", category: "Random Projects" }, { id: "84RAfMeMPKw", title: "Experimental Edit", category: "Random Projects" },
+        { id: "YMh_7TcbCEQ", title: "Travel Montage", category: "Random Projects" }, { id: "rX0aNnZJaVE", title: "Vlog Snippet", category: "Random Projects" }
+    ];
+
+    function getThumbnailUrl(videoId, quality = 'hqdefault') { 
+        return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`; 
+    }
+    
+    function renderVideoRows() {
+        if (!videoGalleryContainer) return;
+        const categories = {};
+        videosData.forEach(video => { 
+            (categories[video.category] = categories[video.category] || []).push(video); 
+        });
+        
+        let galleryHTML = '';
+        for (const categoryName in categories) {
+            const categoryId = categoryName.toLowerCase().replace(/\s+/g, '-');
+            galleryHTML += `<div class="category-video-row"><h4 id="${categoryId}-heading">${categoryName}</h4><div class="row-content">`;
+            categories[categoryName].forEach(video => {
+                galleryHTML += `
+                    <div class="card video-item-card" data-video-id="${video.id}" data-video-title="${video.title}" tabindex="0" role="button" aria-label="Play video: ${video.title}">
+                        <img src="${getThumbnailUrl(video.id)}" alt="Thumbnail for ${video.title}">
+                        <div class="video-info-overlay"><p class="video-title-thumb">${video.title}</p></div>
+                    </div>`;
+            });
+            galleryHTML += `</div></div>`;
+        }
+        videoGalleryContainer.innerHTML = galleryHTML;
+        
+        document.querySelectorAll('.video-item-card').forEach(card => {
+            card.addEventListener('click', () => { 
+                openModalWithVideo(card.dataset.videoId, card.dataset.videoTitle); 
+            });
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openModalWithVideo(card.dataset.videoId, card.dataset.videoTitle);
+                }
+            });
+        });
+    }
+
+    let openedByCard = null; // To return focus
+
+    function openModalWithVideo(videoId, videoTitle, eventSourceElement) {
+        if (eventSourceElement) openedByCard = eventSourceElement;
+
+        if (modalVideoTitleElement) modalVideoTitleElement.textContent = videoTitle || 'Playing Video';
+        if (youtubePlayerContainer) {
+            youtubePlayerContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1" title="YouTube video player for ${videoTitle}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        }
+        if (videoModal) {
+            videoModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            if (closeModalButton) closeModalButton.focus(); 
+        }
+    }
+
+    function closeModal() {
+        if (videoModal) {
+            videoModal.classList.remove('active');
+            setTimeout(() => { 
+                if (youtubePlayerContainer && !videoModal.classList.contains('active')) {
+                    youtubePlayerContainer.innerHTML = ''; 
+                }
+            }, 300);
+            document.body.style.overflow = 'auto';
+            if(openedByCard) {
+                openedByCard.focus();
+                openedByCard = null;
+            }
+        }
+    }
+
+    // --- Easter Egg Functions ---
+    console.log("%cRisk-taker? Type `tellMyStory()` in the console to unlock a secret clip!", "color: #E50914; font-size: 1.2em; font-weight: bold;");
+    window.tellMyStory = function() {
+        console.log("Unlocking secret clip...");
+        if (secretClipOverlay) {
+            secretClipOverlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            if (closeSecretClipButton) closeSecretClipButton.focus();
+        }
+    };
+    if (closeSecretClipButton) {
+        closeSecretClipButton.addEventListener('click', () => {
+            if (secretClipOverlay) secretClipOverlay.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+    }
+
+    let terminalVisible = false;
+    if (cliToggle) {
+        const toggleCli = () => {
+            terminalVisible = !terminalVisible;
+            if (terminalOverlay) {
+                terminalOverlay.classList.toggle('terminal-visible', terminalVisible);
+                cliToggle.setAttribute('aria-expanded', terminalVisible);
+                if (terminalVisible && terminalInput) {
+                    terminalInput.focus();
+                }
+            }
+        };
+        cliToggle.addEventListener('click', toggleCli);
+        cliToggle.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleCli();
+            }
+        });
+    }
+
+    if (terminalInput) {
+        terminalInput.addEventListener('keydown', function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                const command = terminalInput.value.trim(); // Keep case for winStory
+                processTerminalCommand(command);
+                terminalInput.value = ""; 
+            } else if (event.key === "Escape" && terminalVisible) {
+                event.preventDefault();
+                if (terminalOverlay) terminalOverlay.classList.remove('terminal-visible');
+                terminalVisible = false;
+                cliToggle.setAttribute('aria-expanded', terminalVisible);
+                cliToggle.focus();
+            }
+        });
+    }
+
+    function addTerminalOutput(text, isCommand = false, originalCommand = '') {
+        if (!terminalOutput) return;
+        const newLine = document.createElement('span');
+        if (isCommand) {
+            newLine.innerHTML = `<span class="terminal-prompt">WIN@PORTFOLIO:$ ~ </span>${originalCommand}`;
+        } else {
+            // For text that might contain HTML (like links), use innerHTML carefully
+            if (text.includes('<a href') || text.startsWith("  _")) { // Simple check for links or ASCII art
+                 newLine.innerHTML = text;
+            } else {
+                newLine.textContent = text;
+            }
+        }
+        terminalOutput.appendChild(newLine);
+        terminalOutput.scrollTop = terminalOutput.scrollHeight; 
+    }
+
+    function processTerminalCommand(fullCommand) {
+        addTerminalOutput(fullCommand, true, fullCommand); 
+        const command = fullCommand.toLowerCase(); // Process commands in lowercase
+        const parts = command.split(':');
+        const baseCommand = parts[0].trim();
+        const arg = parts[1] ? parts[1].trim() : null;
+
+        switch (baseCommand) {
+            case 'help':
+                addTerminalOutput("Available commands:");
+                addTerminalOutput("  help          - Show this help message");
+                addTerminalOutput("  goto:&lt;section&gt; - Navigate to (e.g., goto:about). Sections: hero-billboard, about, achievements, featured-video, channelflix-gallery, photography, collage, contact");
+                addTerminalOutput("  showawards    - Alias for goto:achievements");
+                addTerminalOutput("  clear         - Clear the terminal");
+                addTerminalOutput("  winstory      - Display Win's motto");
+                addTerminalOutput("  exit          - Close terminal");
+                break;
+            case 'goto':
+                if (arg) {
+                    const sectionId = arg.endsWith('-row') ? arg : arg + '-row'; // Common pattern
+                    const sectionEl = document.getElementById(sectionId) || document.getElementById(arg);
+                    if (sectionEl) {
+                        addTerminalOutput(`Navigating to ${arg}...`);
+                        const headerOffset = (mainHeader && mainHeader.style.position === 'fixed' ? mainHeader.offsetHeight : 0);
+                        const elementPosition = sectionEl.getBoundingClientRect().top + window.pageYOffset;
+                        const offsetPosition = elementPosition - headerOffset - 20;
+                        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+                    } else {
+                        addTerminalOutput(`Error: Section '${arg}' not found. Try: hero-billboard, about, achievements, featured-video, channelflix-gallery, photography, collage, contact`);
+                    }
+                } else {
+                    addTerminalOutput("Usage: goto:&lt;section-name&gt;");
+                }
+                break;
+            case 'showawards': processTerminalCommand('goto:achievements'); break;
+            case 'clear': if (terminalOutput) terminalOutput.innerHTML = ""; break;
+            case 'winstory':
+                addTerminalOutput("  _   _  ____    ____  ____  _____  _____ ____      ");
+                addTerminalOutput(" | \\ | |/ ___|  / ___||  _ \\| ____|| ____|  _ \\ _   ");
+                addTerminalOutput(" |  \\| | |  _   \\___ \\| |_) |  _|  |  _| | |_) | | | |");
+                addTerminalOutput(" | |\\  | |_| |   ___) |  __/| |___ | |___|  _ <| |_| |");
+                addTerminalOutput(" |_| \\_|\\____|  |____/|_|   |_____||_____|_| \\_\\\\__, |");
+                addTerminalOutput("   No Risk. No Story.                            |___/ ");
+                break;
+            case 'exit':
+                if (terminalOverlay) terminalOverlay.classList.remove('terminal-visible');
+                terminalVisible = false;
+                cliToggle.setAttribute('aria-expanded', terminalVisible);
+                cliToggle.focus();
+                break;
+            default: addTerminalOutput(`Command not found: ${fullCommand}. Type 'help'.`);
+        }
+    }
+
+    let hoverTimeoutAchievement;
+    if (achievementBurstTrigger) {
+        const activateBurst = () => {
+            clearTimeout(hoverTimeoutAchievement);
+            triggerAchievementBurst();
+        }
+        achievementBurstTrigger.addEventListener('mouseenter', () => {
+            hoverTimeoutAchievement = setTimeout(triggerAchievementBurst, 3000); 
+        });
+        achievementBurstTrigger.addEventListener('mouseleave', () => { clearTimeout(hoverTimeoutAchievement); });
+        achievementBurstTrigger.addEventListener('focus', () => {
+            hoverTimeoutAchievement = setTimeout(triggerAchievementBurst, 3000);
+        });
+        achievementBurstTrigger.addEventListener('blur', () => { clearTimeout(hoverTimeoutAchievement); });
+        achievementBurstTrigger.addEventListener('keydown', (e) => {
+             if(e.key === 'Enter' || e.key === ' ') {
+                 e.preventDefault();
+                 activateBurst();
+             }
+        });
+    }
+
+    function triggerAchievementBurst() {
+        for (let i = 0; i < 30; i++) { 
+            const confettiPiece = document.createElement('div');
+            confettiPiece.classList.add('confetti');
+            confettiPiece.style.left = Math.random() * 100 + 'vw'; 
+            confettiPiece.style.animationDelay = Math.random() * 1 + 's'; 
+            confettiPiece.style.backgroundColor = ['gold', '#FFD700', '#F0C000'][Math.floor(Math.random() * 3)]; 
+            document.body.appendChild(confettiPiece);
+            confettiPiece.addEventListener('animationend', () => { confettiPiece.remove(); });
+        }
+
+        let factoidPopup = document.getElementById('achievement-factoid-popup');
+        if (!factoidPopup) {
+            factoidPopup = document.createElement('div');
+            factoidPopup.id = 'achievement-factoid-popup';
+            factoidPopup.setAttribute('role', 'alert');
+            const closeFactoidBtnId = 'closeFactoidBtn';
+            factoidPopup.innerHTML = `Did you know? Win once clocked 10.5s in the 100m sprint! <button id="${closeFactoidBtnId}" style="display:block; margin-top:10px; background:var(--netflix-red); color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">Got it!</button>`;
+            document.body.appendChild(factoidPopup);
+            document.getElementById(closeFactoidBtnId).addEventListener('click', function() {
+                this.parentElement.classList.remove('visible');
+                achievementBurstTrigger.focus(); // Return focus to trigger
+            });
+
+        }
+        setTimeout(() => {
+            factoidPopup.classList.add('visible');
+            factoidPopup.querySelector('button').focus();
+        }, 500); 
+    }
+
+    const pinData = {
+        pin1_robotics_venue: { title: "Robotics Nationals!", text: "This was where I won my first National Robotics Gold in 2022. What a day!", image: "Pic2.webp" },
+        pin2_film_fest: { title: "Student Film Showcase", text: "Screened my short film here! The energy of fellow filmmakers was inspiring.", image: "Pic3.webp" }
+    };
+
+    pinnedItems.forEach(pin => {
+        const pinId = pin.dataset.pinId;
+        if (pinId && pinData[pinId]) { 
+            pin.style.cursor = 'pointer'; 
+            pin.setAttribute('title', `Found something interesting? Click me!`);
+            pin.setAttribute('role', 'button');
+            pin.setAttribute('tabindex', '0');
+
+            const clickOrEnterHandler = (event) => {
+                if(event.type === 'click' || (event.type === 'keydown' && (event.key === 'Enter' || event.key === ' '))) {
+                    event.preventDefault();
+                    showPinPopup(pinData[pinId], pin); // Pass pin element for focus return
+                    if (!foundPins.has(pinId)) {
+                        foundPins.add(pinId);
+                        addTerminalOutput(`Pin found: ${pinData[pinId].title}`); 
+                        checkAllPinsFound();
+                    }
+                }
+            };
+            pin.addEventListener('click', clickOrEnterHandler);
+            pin.addEventListener('keydown', clickOrEnterHandler);
+        }
+    });
+
+    function showPinPopup(data, sourceElement) {
+        const existingPopup = document.getElementById('pin-detail-popup');
+        if (existingPopup) existingPopup.remove();
+
+        const popup = document.createElement('div');
+        popup.id = 'pin-detail-popup';
+        popup.classList.add('pin-popup');
+        popup.setAttribute('role', 'dialog');
+        popup.setAttribute('aria-modal', 'true');
+        popup.setAttribute('aria-labelledby', 'pin-popup-title');
+
+        const closeBtnId = 'closePinPopupBtn';
+        popup.innerHTML = `
+            <h3 id="pin-popup-title">${data.title}</h3>
+            <img src="${data.image}" alt="${data.title}">
+            <p>${data.text}</p>
+            <button id="${closeBtnId}">Close</button>
+        `;
+        document.body.appendChild(popup);
+        const closeButton = document.getElementById(closeBtnId);
+        closeButton.addEventListener('click', function() {
+            this.parentElement.remove();
+            if(sourceElement) sourceElement.focus(); // Return focus to the pin
+        });
+        closeButton.focus();
+
+        // Trap focus (basic)
+        popup.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                if (e.target === closeButton && !e.shiftKey) {
+                    e.preventDefault(); closeButton.focus(); // Keep focus on button
+                }
+            } else if (e.key === 'Escape') {
+                 e.preventDefault(); closeButton.click();
+            }
+        });
+    }
+
+    function checkAllPinsFound() {
+        if (foundPins.size === totalPins) {
+            const message = `Congratulations! You've found all the hidden pins! Your reward: A special wallpaper. Download here: <a href="${wallpaperRewardUrl}" target="_blank" download style="color: var(--netflix-red); text-decoration: underline;">Win's Landscape Wallpaper</a>`;
+            addTerminalOutput(message); 
+            // Timeout to allow terminal to potentially open and show message first
+            setTimeout(() => {
+                alert(`Congratulations! You've found all hidden pins! A wallpaper download link is available (check the terminal if open) or download from: ${wallpaperRewardUrl}`);
+            }, 100);
+        }
+    }
+    
+    // --- Event Listeners Setup (Global) ---
+    window.addEventListener('scroll', updateProgressBarAndHeader); // Changed from onscroll
+
+    navLinks.forEach(anchor => {
+        anchor.addEventListener('click', smoothScrollToSection);
+    });
+    
+    if (closeModalButton) closeModalButton.addEventListener('click', closeModal);
+    if (videoModal) {
+        videoModal.addEventListener('click', (event) => { 
+            if (event.target === videoModal) closeModal(); 
+        });
+    }
+    document.addEventListener('keydown', (event) => { 
+        if (event.key === "Escape") {
+            if (videoModal && videoModal.classList.contains('active')) {
+                closeModal(); 
+            } else if (secretClipOverlay && secretClipOverlay.style.display === 'flex') {
+                if(closeSecretClipButton) closeSecretClipButton.click();
+            } else if (document.getElementById('pin-detail-popup')) {
+                const pinCloseBtn = document.getElementById('pin-detail-popup').querySelector('button');
+                if (pinCloseBtn) pinCloseBtn.click();
+            }
+            // Escape for terminal is handled within its own input listener
+        }
+    });
+        
+    // --- DOMContentLoaded: Initial Setup ---
+    document.addEventListener('DOMContentLoaded', () => {
+        sr.reveal('.sr-hidden'); 
+        
+        if (currentYearSpan) currentYearSpan.textContent = new Date().getFullYear();
+
+        if (achievementsCardsViewEl) achievementsCardsViewEl.style.display = 'flex'; 
+        if (achievementsTimelineViewEl) achievementsTimelineViewEl.style.display = 'none';
+
+        if (achievementsToggleCheckbox && achievementsCardsViewEl && achievementsTimelineViewEl) {
+            achievementsToggleCheckbox.addEventListener('change', () => {
+                achievementsTimelineViewEl.style.display = achievementsToggleCheckbox.checked ? 'block' : 'none';
+                achievementsCardsViewEl.style.display = achievementsToggleCheckbox.checked ? 'none' : 'flex';
+            });
+        }
+        
+        renderVideoRows();
+        
+        updateActiveNavLink(); 
+        updateProgressBarAndHeader(); 
+
+        // Show Achievement Burst Trigger after a delay
+        if (achievementBurstTrigger) {
+            setTimeout(() => { 
+                achievementBurstTrigger.style.display = 'inline-block';
+                sr.reveal(achievementBurstTrigger, {delay: 500, origin: 'left', distance: '20px'});
+            }, 2000); 
+        }
+    });
+    </script>
+</body>
+</html>

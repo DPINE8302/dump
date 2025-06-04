@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Earthquake Simulation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --success-color: #28a745;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column; /* Stack map and controls/info */
+            height: 100vh;
+            background-color: var(--light-color);
+            overflow: hidden; /* Prevent scrollbars from shake */
+            transition: transform 0.05s ease-out; /* For camera shake */
+        }
+
+        .shaking {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0) scale(1.001); }
+            20%, 80% { transform: translate3d(2px, 0, 0) scale(1.002); }
+            30%, 50%, 70% { transform: translate3d(-3px, 0, 0) scale(1.003); }
+            40%, 60% { transform: translate3d(3px, 0, 0) scale(1.002); }
+        }
+
+
+        #map-container {
+            flex-grow: 1; /* Map takes available space */
+            position: relative;
+            width: 100%;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            background-color: #add8e6; /* Light blue for water */
+        }
+
+        #controls-and-info {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-top: 1px solid #ddd;
+            max-height: 40vh; /* Limit height on smaller screens */
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 200px; /* Ensure controls don't get too squished */
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+
+        #info-display {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+
+        .info-cards-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .info-card {
+            background-color: var(--light-color);
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid var(--primary-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            min-width: 150px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .info-card strong {
+            display: block;
+            font-size: 1.1em;
+            color: var(--dark-color);
+            margin-bottom: 3px;
+        }
+        .info-card span {
+            color: #555;
+        }
+
+
+        #callout-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-in-out, visibility 0s 0.5s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        #callout-message.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.5s ease-in-out, visibility 0s 0s;
+        }
+
+        .epicenter-marker-icon {
+            background-color: rgba(220, 0, 0, 0.8); border-radius: 50%;
+            width: 12px; height: 12px; border: 2px solid white;
+            box-shadow: 0 0 0 2px rgba(220,0,0,0.7), 0 0 10px rgba(220,0,0,0.8);
+            animation: pulse-epicenter-brief 0.8s ease-out;
+        }
+         @keyframes pulse-epicenter-brief {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        /* For mobile: */
+        @media (max-width: 768px) {
+            #controls-and-info {
+                max-height: 50vh; /* Allow more space on mobile */
+            }
+            .controls-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .control-group {
+                 min-width: unset; /* Allow full width */
+            }
+            #callout-message {
+                font-size: 1em;
+                padding: 10px 15px;
+                width: 90%;
+            }
+            .info-card {
+                min-width: 120px;
+                flex-basis: 45%; /* Two cards per row approx */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div id="callout-message">Impact Detected: Ripple Unleashed. Lives Altered.</div>
+
+    <div id="controls-and-info">
+        <div class="controls-row">
+            <div class="control-group">
+                <label for="magnitude-slider">Magnitude: <span id="magnitude-value">7.0</span> M</label>
+                <input type="range" id="magnitude-slider" min="5.0" max="9.5" step="0.1" value="7.0">
+            </div>
+            <div class="control-group">
+                <label for="depth-slider">Depth: <span id="depth-value">20</span> km</label>
+                <input type="range" id="depth-slider" min="5" max="200" step="1" value="20">
+            </div>
+        </div>
+
+        <div id="info-display">
+            <div class="info-cards-container">
+                <div class="info-card" id="epicenter-card"><strong>Epicenter</strong><span>-</span></div>
+                <div class="info-card" id="impact-radius-card"><strong>Impact Radius</strong><span>-</span></div>
+                <div class="info-card" id="est-casualties-card"><strong>Est. Casualties</strong><span>-</span></div>
+            </div>
+        </div>
+        <p style="font-size:0.8em; text-align: center; margin-top: 10px; color: #777;">
+            Casualty estimates are illustrative and NOT real predictions. This is a simplified simulation.
+        </p>
+    </div>
+    <audio id="rumble-sound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3" preload="auto"></audio> 
+    <!-- Replace with a better rumble sound URL -->
+
+<script>
+    const mapElement = document.getElementById('map');
+    const magnitudeSlider = document.getElementById('magnitude-slider');
+    const magnitudeValueDisplay = document.getElementById('magnitude-value');
+    const depthSlider = document.getElementById('depth-slider');
+    const depthValueDisplay = document.getElementById('depth-value');
+    const calloutMessageDiv = document.getElementById('callout-message');
+    const rumbleSound = document.getElementById('rumble-sound');
+
+    const epicenterCard = document.getElementById('epicenter-card').querySelector('span');
+    const impactRadiusCard = document.getElementById('impact-radius-card').querySelector('span');
+    const estCasualtiesCard = document.getElementById('est-casualties-card').querySelector('span');
+
+    let map;
+    let currentEpicenterMarker = null;
+    let activeVisualLayers = []; // For ripples and damage zones
+    let animationFrameId = null;
+
+    // Dummy city data: { name, lat, lng, population }
+    const cities = [
+        { name: "Metro City", lat: 10, lng: 110, population: 5000000 },
+        { name: "Coastal Town", lat: 8, lng: 112, population: 300000 },
+        { name: "Island Port", lat: 6, lng: 108, population: 1200000 },
+        { name: "Inland Hub", lat: 12, lng: 107, population: 2000000 },
+        { name: "Southern Capital", lat: 2, lng: 111, population: 8000000 },
+        { name: "North Bay", lat: 15, lng: 113, population: 750000},
+    ];
+
+
+    function initMap() {
+        map = L.map('map').setView([8, 110], 6); // Adjust initial view as needed
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18, attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+        map.on('click', handleMapClick);
+
+        // Initial values
+        magnitudeValueDisplay.textContent = parseFloat(magnitudeSlider.value).toFixed(1);
+        depthValueDisplay.textContent = depthSlider.value;
+    }
+
+    magnitudeSlider.addEventListener('input', e => magnitudeValueDisplay.textContent = parseFloat(e.target.value).toFixed(1));
+    depthSlider.addEventListener('input', e => depthValueDisplay.textContent = e.target.value);
+
+    function clearPreviousSimulation() {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        activeVisualLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+        activeVisualLayers = [];
+        if (currentEpicenterMarker && map.hasLayer(currentEpicenterMarker)) map.removeLayer(currentEpicenterMarker);
+        currentEpicenterMarker = null;
+        document.body.classList.remove('shaking');
+        calloutMessageDiv.classList.remove('visible');
+        epicenterCard.textContent = '-';
+        impactRadiusCard.textContent = '-';
+        estCasualtiesCard.textContent = '-';
+    }
+
+    function handleMapClick(e) {
+        clearPreviousSimulation();
+
+        const epicenterLatlng = e.latlng;
+        const magnitude = parseFloat(magnitudeSlider.value);
+        const depth = parseInt(depthSlider.value);
+
+        // 1. Place Epicenter Marker
+        const epicenterIcon = L.divIcon({ className: 'epicenter-marker-icon', iconSize: [12, 12] });
+        currentEpicenterMarker = L.marker(epicenterLatlng, { icon: epicenterIcon }).addTo(map);
+
+        // 2. Trigger Camera Shake
+        document.body.classList.add('shaking');
+        setTimeout(() => document.body.classList.remove('shaking'), 300); // Match animation duration
+
+        // 3. Play Sound
+        rumbleSound.currentTime = 0; // Rewind
+        rumbleSound.play().catch(error => console.warn("Audio play failed:", error));
+
+
+        // 4. Show Callout
+        calloutMessageDiv.classList.add('visible');
+        setTimeout(() => calloutMessageDiv.classList.remove('visible'), 4000);
+
+        // 5. Calculate Simulation Data
+        const impactRadiusKm = calculateImpactRadius(magnitude);
+        const estimatedCasualties = estimateCasualties(epicenterLatlng, magnitude, depth, impactRadiusKm);
+        
+        // 6. Update Info Display
+        epicenterCard.textContent = `${epicenterLatlng.lat.toFixed(3)}, ${epicenterLatlng.lng.toFixed(3)}`;
+        impactRadiusCard.textContent = `${impactRadiusKm.toFixed(0)} km`;
+        estCasualtiesCard.textContent = `~${estimatedCasualties.toLocaleString()}`;
+
+        // 7. Start Ripple Animation & Damage Zones
+        startRippleAndDamageZoneAnimation(epicenterLatlng, magnitude, impactRadiusKm);
+    }
+
+    function calculateImpactRadius(magnitude) {
+        // Simplified: exponential increase with magnitude
+        return 20 * Math.pow(magnitude - 4, 2.5); // Starts having noticeable radius above M4
+    }
+
+    function estimateCasualties(epicenter, magnitude, depth, impactRadiusKm) {
+        let totalCasualties = 0;
+        const tsunamigenicFactor = depth < 70 ? 1.5 : (depth < 150 ? 1.0 : 0.5); // Shallow quakes more impact
+
+        cities.forEach(city => {
+            const cityLatlng = L.latLng(city.lat, city.lng);
+            const distanceKm = epicenter.distanceTo(cityLatlng) / 1000;
+
+            if (distanceKm < impactRadiusKm) {
+                // Closer to epicenter = higher impact. Higher magnitude = higher base impact.
+                const proximityFactor = 1 - (distanceKm / impactRadiusKm); // 1 if at epicenter, 0 at edge
+                const magnitudeImpact = Math.pow(magnitude, 3) / 500; // Arbitrary scaling
+                
+                // Simplified % of population, capped
+                let affectedPercentage = Math.min(0.30, magnitudeImpact * proximityFactor * tsunamigenicFactor * 0.1);
+                totalCasualties += Math.floor(city.population * affectedPercentage);
+            }
+        });
+        return Math.max(0, Math.min(totalCasualties, 5000000)); // Cap total for demo
+    }
+
+    function startRippleAndDamageZoneAnimation(epicenter, magnitude, maxImpactRadiusKm) {
+        const RIPPLE_COUNT = 5; // Number of ripples in a "wave"
+        const RIPPLE_SPREAD_MS = 200; // Time between each ripple in a wave
+        const RIPPLE_DURATION_MS = 1500; // How long one ripple animates
+        const MAX_VISUAL_RADIUS_M = maxImpactRadiusKm * 1000 * 1.2; // Visual slightly larger
+
+        let startTime = null;
+        let ripplesSpawned = 0;
+
+        // --- Damage Zone Colors ---
+        const damageColors = [
+            { radiusFactor: 0.2, color: 'rgba(255, 0, 0, 0.3)', label: "Severe" },    // Red (inner)
+            { radiusFactor: 0.5, color: 'rgba(255, 165, 0, 0.25)', label: "Major" },   // Orange
+            { radiusFactor: 1.0, color: 'rgba(255, 255, 0, 0.2)', label: "Moderate" } // Yellow (outer)
+        ];
+
+        // Draw static damage zones first
+        damageColors.sort((a, b) => b.radiusFactor - a.radiusFactor).forEach(zone => { // Draw larger first
+            const zoneRadiusM = maxImpactRadiusKm * 1000 * zone.radiusFactor;
+            const damageCircle = L.circle(epicenter, {
+                radius: zoneRadiusM,
+                fillColor: zone.color,
+                fillOpacity: 1, // Opacity is in color string
+                weight: 0, // No border
+                interactive: false,
+                pane: 'overlayPane' // Ensure they are above tiles
+            }).addTo(map);
+            activeVisualLayers.push(damageCircle);
+        });
+
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+
+            // Spawn ripples periodically
+            if (ripplesSpawned < RIPPLE_COUNT && elapsed > ripplesSpawned * RIPPLE_SPREAD_MS) {
+                createRipple(epicenter, MAX_VISUAL_RADIUS_M, RIPPLE_DURATION_MS, magnitude);
+                ripplesSpawned++;
+            }
+
+            if (elapsed < RIPPLE_DURATION_MS + (RIPPLE_COUNT -1) * RIPPLE_SPREAD_MS) { // Continue if ripples are still active
+                animationFrameId = requestAnimationFrame(animate);
+            } else {
+                animationFrameId = null; // Animation finished
+            }
+        }
+        animationFrameId = requestAnimationFrame(animate);
+    }
+
+    function createRipple(center, maxRadiusM, durationMs, magnitude) {
+        const ripple = L.circle(center, {
+            radius: 0,
+            color: `rgba(0, 120, 200, ${0.3 + Math.min(0.4, (magnitude-5)*0.1)})`,
+            weight: 1 + Math.min(2, (magnitude - 5) * 0.5),
+            fill: false,
+            opacity: 0.6,
+            interactive: false,
+            pane: 'shadowPane' // Render ripples behind markers
+        }).addTo(map);
+        activeVisualLayers.push(ripple);
+
+        const rippleStartTime = performance.now();
+
+        function animateRippleFrame(timestamp) {
+            const elapsed = timestamp - rippleStartTime;
+            let progress = elapsed / durationMs;
+
+            if (progress < 1) {
+                ripple.setRadius(progress * maxRadiusM);
+                ripple.setStyle({ opacity: 0.6 * (1 - Math.pow(progress, 2)) }); // Fade out faster
+                requestAnimationFrame(animateRippleFrame);
+            } else {
+                if (map.hasLayer(ripple)) map.removeLayer(ripple);
+                activeVisualLayers = activeVisualLayers.filter(l => l !== ripple);
+            }
+        }
+        requestAnimationFrame(animateRippleFrame);
+    }
+
+    // Initialize
+    initMap();
+
+</script>
+</body>
+</html>

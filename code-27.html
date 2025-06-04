@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoSim: Global Impact Visualizer</title> <!-- More Apple-esque name -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        :root {
+            --bg-main: #f9f9f9; /* Off-white, very Apple */
+            --bg-panel: #ffffff;
+            --text-primary: #1d1d1f; /* Apple's primary dark text */
+            --text-secondary: #58585b; /* Apple's secondary gray */
+            --text-tertiary: #86868b;
+            --accent-blue: #007aff; /* Apple Blue */
+            --accent-red: #ff3b30;  /* Apple Red */
+            --accent-orange: #ff9500; /* Apple Orange */
+            --border-color: #d2d2d7;
+            --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.08);
+            --font-system: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        }
+
+        body {
+            font-family: var(--font-system);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased; /* Smoother fonts on macOS/iOS */
+            -moz-osx-font-smoothing: grayscale;
+            transition: transform 0.06s ease-in-out;
+        }
+
+        .shaking { animation: soft-shake 0.2s ease-in-out 2; }
+        @keyframes soft-shake { /* Even softer shake */
+            25% { transform: translate(0.5px, 0.5px); }
+            50% { transform: translate(-0.5px, -0.5px); }
+            75% { transform: translate(0.5px, -0.5px); }
+        }
+
+        #map-container {
+            flex-grow: 1;
+            position: relative;
+            width: 100%;
+            background-color: #e5e5e5; /* Placeholder while map loads */
+        }
+        #map { height: 100%; width: 100%; }
+
+        /* Leaflet Control Panel Styling */
+        .leaflet-control-container .leaflet-control {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            backdrop-filter: blur(10px) !important; /* Frosted glass effect */
+            -webkit-backdrop-filter: blur(10px) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid rgba(0,0,0,0.08) !important;
+            box-shadow: var(--shadow-soft) !important;
+            border-radius: 10px !important; /* More rounded */
+        }
+        .leaflet-control-zoom a { color: var(--text-primary) !important; }
+        .leaflet-control-attribution { font-size: 10px !important; background: rgba(255,255,255,0.7) !important;}
+        .leaflet-control-attribution a { color: var(--accent-blue) !important; }
+
+
+        #controls-and-info {
+            display: flex;
+            flex-direction: column;
+            padding: 16px 24px; /* More padding */
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            max-height: 42vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .panel-title { /* Removed, less prominent title */ }
+
+        .controls-row {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .control-group { flex: 1; min-width: 200px; }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500; /* Medium weight */
+            font-size: 13px; /* Apple uses specific pt sizes, emulating */
+            color: var(--text-secondary);
+        }
+        .control-group label span { /* The value part */
+            font-weight: 600;
+            color: var(--text-primary);
+            background-color: #f0f0f0; /* Lighter background for value */
+            padding: 3px 7px;
+            border-radius: 6px;
+            margin-left: 8px;
+            font-size: 12px;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+            background: transparent; /* Remove default track background for better styling */
+            height: 5px; /* Consistent track height */
+        }
+        /* Custom range slider track - WebKit */
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #e0e0e0;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -6px; /* Center thumb on track */
+            border: 2px solid var(--bg-panel); /* Border around thumb */
+            box-shadow: 0 0 0 2px rgba(0,122,255,0.3); /* Subtle glow on focus/active */
+        }
+         /* Custom range slider track - Firefox */
+        input[type="range"]::-moz-range-track {
+            background: #e0e0e0;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 14px; /* Slightly smaller for consistency with border */
+            height: 14px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid var(--bg-panel);
+            box-shadow: 0 0 0 2px rgba(0,122,255,0.3);
+        }
+
+
+        #info-display-summary { margin-top: 12px; }
+        .info-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .info-card {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-radius: 12px; /* More rounded */
+            font-size: 13px;
+            box-shadow: var(--shadow-soft);
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+        }
+        /* No hover transform for a flatter Apple feel, rely on content hierarchy */
+        .info-card strong { /* Card Title */
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+        .info-card span { /* Card Value */
+            font-size: 18px; /* Larger value text */
+            font-weight: 600;
+            color: var(--text-primary);
+            display: block;
+        }
+        .info-card#latest-total-casualties-card span { color: var(--accent-red); }
+
+
+        #city-impact-list-container { margin-top: 0; }
+        #city-impact-list-container h4 {
+            margin: 12px 0 8px 0; font-size: 13px; font-weight: 600;
+            color: var(--text-secondary);
+        }
+        #city-impact-list {
+            list-style-type: none; padding-left: 0; font-size: 13px;
+            max-height: 80px; overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 4px;
+        }
+        #city-impact-list li {
+            padding: 6px 10px;
+            border-bottom: 1px solid #f0f0f0; /* Lighter separator */
+            color: var(--text-secondary);
+        }
+        #city-impact-list li:last-child { border-bottom: none; }
+        #city-impact-list li.affected { font-weight: 600; color: var(--accent-red) !important; }
+        #city-impact-list li.minor-affected { font-weight: 500; color: var(--accent-orange) !important; }
+
+        #callout-message { /* "Toast" like notification */
+            font-family: var(--font-system);
+            font-weight: 500;
+            bottom: 30px; /* Position at bottom */
+            top: auto; 
+            left: 50%;
+            transform: translate(-50%, 20px); /* Start below */
+            background-color: rgba(29, 29, 31, 0.92); /* Dark, slightly transparent */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: #f5f5f7; /* Apple's light text on dark bg */
+            padding: 10px 20px;
+            border-radius: 20px; /* Pill shape, but less pronounced */
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease-out, visibility 0s 0.3s, transform 0.3s cubic-bezier(0.215, 0.610, 0.355, 1); /* Smoother ease */
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        #callout-message.visible {
+            opacity: 1; visibility: visible;
+            transform: translate(-50%, 0);
+            transition: opacity 0.3s ease-out, visibility 0s 0s, transform 0.3s cubic-bezier(0.215, 0.610, 0.355, 1);
+        }
+
+        .epicenter-marker-icon {
+            background-color: var(--accent-red);
+            border-radius: 50%; width: 10px; height: 10px; /* Slightly smaller base */
+            border: 2px solid var(--bg-panel); /* Match panel for cutout effect */
+            box-shadow: 0 0 0 3px var(--accent-red), 0 0 10px rgba(255,59,48,0.7);
+            animation: pulse-apple-epicenter 1.2s infinite alternate ease-in-out;
+        }
+        @keyframes pulse-apple-epicenter {
+            0% { transform: scale(1); box-shadow: 0 0 0 2px var(--accent-red), 0 0 8px rgba(255,59,48,0.5); }
+            100% { transform: scale(1.2); box-shadow: 0 0 0 4px rgba(255,59,48,0.4), 0 0 15px rgba(255,59,48,0.4); }
+        }
+        .city-marker-icon {
+            background-color: rgba(255,255,255,0.7); /* Lighter, semi-transparent */
+            backdrop-filter: blur(2px);
+            color: var(--text-secondary);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 4px; padding: 1px 3px; font-size: 9px;
+            font-weight: 500;
+        }
+        
+        /* Scrollbar styling for webkit browsers */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px;}
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        @media (max-width: 768px) {
+            #controls-and-info { max-height: 50vh; padding: 12px 16px;}
+            .controls-row { flex-direction: column; gap: 12px; }
+            .info-cards-container { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .info-card { padding: 10px 12px; border-radius: 10px;}
+            .info-card span { font-size: 16px; }
+            #city-impact-list { max-height: 70px; font-size: 12px; }
+            #callout-message { font-size: 13px; padding: 8px 16px; width: calc(100% - 40px); border-radius: 15px;}
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container"><div id="map"></div></div>
+    <div id="callout-message">Geospatial Event Triggered</div> <!-- More neutral callout -->
+    <div id="controls-and-info">
+        <!-- <div class="panel-title">Simulation Parameters</div> Removed for cleaner look -->
+        <div class="controls-row">
+            <div class="control-group">
+                <label>Magnitude <span id="magnitude-value">7.2</span> M</label>
+                <input type="range" id="magnitude-slider" min="6.0" max="9.5" step="0.1" value="7.2">
+            </div>
+            <div class="control-group">
+                <label>Depth <span id="depth-value">25</span> km</label>
+                <input type="range" id="depth-slider" min="5" max="300" step="1" value="25">
+            </div>
+        </div>
+        <div id="info-display-summary">
+            <div class="info-cards-container">
+                <div class="info-card" id="latest-epicenter-card"><strong>Epicenter</strong><span>–</span></div>
+                <div class="info-card" id="latest-impact-radius-card"><strong>Impact Zone</strong><span>–</span></div>
+                <div class="info-card" id="latest-total-casualties-card"><strong>Est. Casualties</strong><span>–</span></div>
+            </div>
+            <div id="city-impact-list-container">
+                <h4>Regional Impact Assessment (Illustrative)</h4>
+                <ul id="city-impact-list"><li>Awaiting simulation data.</li></ul>
+            </div>
+        </div>
+        <p style="font-size:11px; text-align:center; margin-top:auto; padding-top:8px; color:var(--text-tertiary);">
+            Casualty estimates are illustrative and for demonstration purposes only. Visuals: ~22s.
+        </p>
+    </div>
+
+<script>
+    // --- JAVASCRIPT (Instant Casualty Logic - Largely Unchanged from previous "Instant" version) ---
+    const magnitudeSlider = document.getElementById('magnitude-slider');
+    const magnitudeValueDisplay = document.getElementById('magnitude-value');
+    const depthSlider = document.getElementById('depth-slider');
+    const depthValueDisplay = document.getElementById('depth-value');
+    const calloutMessageDiv = document.getElementById('callout-message');
+
+    const latestEpicenterCardSpan = document.getElementById('latest-epicenter-card').querySelector('span');
+    const latestImpactRadiusCardSpan = document.getElementById('latest-impact-radius-card').querySelector('span');
+    const latestTotalCasualtiesCardSpan = document.getElementById('latest-total-casualties-card').querySelector('span');
+    const cityImpactUl = document.getElementById('city-impact-list');
+
+    let map;
+    let activeSimulations = []; 
+    let globalCityImpacts = {};
+
+    const worldMajorCities = [ /* ... (Keep the same extensive list from previous version) ... */
+        { name: "Tokyo", lat: 35.6895, lng: 139.6917, population: 37400000 }, { name: "Delhi", lat: 28.7041, lng: 77.1025, population: 30290000 },
+        { name: "Shanghai", lat: 31.2304, lng: 121.4737, population: 27050000 }, { name: "Sao Paulo", lat: -23.5505, lng: -46.6333, population: 22040000 },
+        { name: "Mexico City", lat: 19.4326, lng: -99.1332, population: 21780000 }, { name: "Cairo", lat: 30.0444, lng: 31.2357, population: 20900000 },
+        { name: "Mumbai", lat: 19.0760, lng: 72.8777, population: 20410000 }, { name: "Beijing", lat: 39.9042, lng: 116.4074, population: 20380000 },
+        { name: "Dhaka", lat: 23.8103, lng: 90.4125, population: 20280000 }, { name: "Osaka", lat: 34.6937, lng: 135.5023, population: 19200000 },
+        { name: "New York", lat: 40.7128, lng: -74.0060, population: 18800000 }, { name: "Karachi", lat: 24.8607, lng: 67.0011, population: 16090000 },
+        { name: "Buenos Aires", lat: -34.6037, lng: -58.3816, population: 15180000 }, { name: "Chongqing", lat: 29.4316, lng: 106.9123, population: 15000000},
+        { name: "Istanbul", lat: 41.0082, lng: 28.9784, population: 15000000 }, { name: "Kolkata", lat: 22.5726, lng: 88.3639, population: 14850000 },
+        { name: "Manila", lat: 14.5995, lng: 120.9842, population: 13500000 }, { name: "Lagos", lat: 6.5244, lng: 3.3792, population: 14360000 },
+        { name: "Rio de Janeiro", lat: -22.9068, lng: -43.1729, population: 13450000 }, { name: "Guangzhou", lat: 23.1291, lng: 113.2644, population: 13300000 },
+        { name: "Los Angeles", lat: 34.0522, lng: -118.2437, population: 12440000 }, { name: "Moscow", lat: 55.7558, lng: 37.6173, population: 12500000 },
+        { name: "Shenzhen", lat: 22.5431, lng: 114.0579, population: 12350000 }, { name: "Lahore", lat: 31.5204, lng: 74.3587, population: 12180000 },
+        { name: "Bangalore", lat: 12.9716, lng: 77.5946, population: 12300000 }, { name: "Paris", lat: 48.8566, lng: 2.3522, population: 11000000 },
+        { name: "Jakarta", lat: -6.2088, lng: 106.8456, population: 10500000 }, { name: "Lima", lat: -12.0464, lng: -77.0428, population: 10300000 },
+        { name: "Bangkok", lat: 13.7563, lng: 100.5018, population: 10700000 }, { name: "Seoul", lat: 37.5665, lng: 126.9780, population: 9700000 },
+        { name: "London", lat: 51.5074, lng: -0.1278, population: 9300000 }, { name: "Tehran", lat: 35.6892, lng: 51.3890, population: 9100000 },
+        { name: "Ho Chi Minh City", lat:10.8231, lng:106.6297, population:9000000}, { name: "Hong Kong", lat: 22.3193, lng: 114.1694, population: 7500000 },
+        { name: "Santiago", lat: -33.4489, lng: -70.6693, population: 6150000}, { name: "Singapore", lat: 1.3521, lng: 103.8198, population: 5900000 },
+        { name: "Sydney", lat: -33.8688, lng: 151.2093, population: 5300000 }, { name: "Rome", lat: 41.9028, lng: 12.4964, population: 4300000 },
+        { name: "Cape Town", lat: -33.9249, lng: 18.4241, population: 4600000 }, { name: "San Francisco", lat: 37.7749, lng: -122.4194, population: 3300000},
+        { name: "Vancouver", lat: 49.2827, lng: -123.1207, population: 2600000}, { name: "Wellington", lat: -41.2865, lng: 174.7762, population: 420000}
+    ];
+
+    const RIPPLE_ANIMATION_DURATION_MS = 1700; // Adjusted
+    const SIMULATION_VISUAL_LIFESPAN_MS = 22000;
+
+
+    function initMap() {
+        map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        // Using CartoDB Positron for a light, clean map
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd', maxZoom: 19, minZoom: 2, noWrap: true
+        }).addTo(map);
+
+        worldMajorCities.forEach(city => { /* ... (city marker init same as before, but uses new CSS) ... */
+            const cityIcon = L.divIcon({
+                className: 'city-marker-icon', html: `<div>${city.name.substring(0,3).toUpperCase()}</div>`,
+                iconSize: [25, 12], iconAnchor: [12, 6]
+            });
+            L.marker([city.lat, city.lng], { icon: cityIcon, zIndexOffset: 500, interactive: false })
+             .addTo(map)
+             .bindTooltip(city.name, {permanent: false, direction: 'top', opacity: 0.9, offset: [0,-6]});
+            globalCityImpacts[city.name] = { casualties: 0, population: city.population };
+        });
+        
+        map.on('click', handleMapClick);
+        magnitudeValueDisplay.textContent = parseFloat(magnitudeSlider.value).toFixed(1);
+        depthValueDisplay.textContent = depthSlider.value;
+        updateGlobalCityImpactList();
+    }
+
+    // ... (JavaScript logic for handleMapClick, calculateMaxImpactRadius, 
+    //      calculateInstantaneousImpacts, startVisualsOnlyAnimation, 
+    //      createVisualRipple, updateGlobalCityImpactList remains THE SAME 
+    //      as the previous "Instant Casualty" version.)
+
+    function handleMapClick(e) {
+        calloutMessageDiv.textContent = "Geospatial Event Triggered";
+
+        const epicenterLatlng = e.latlng;
+        const magnitude = parseFloat(magnitudeSlider.value);
+        const depth = parseInt(depthSlider.value);
+        const simId = Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+
+        const epicenterIcon = L.divIcon({ className: 'epicenter-marker-icon', iconSize: [10,10] });
+        const epicenterMarker = L.marker(epicenterLatlng, { icon: epicenterIcon, zIndexOffset: 1000 }).addTo(map);
+        
+        document.body.classList.add('shaking');
+        setTimeout(() => document.body.classList.remove('shaking'), 250); 
+        
+        calloutMessageDiv.classList.add('visible');
+        setTimeout(() => calloutMessageDiv.classList.remove('visible'), 3500);
+
+        const maxImpactRadiusKm = calculateMaxImpactRadius(magnitude);
+        
+        const { totalCasualtiesThisEvent, cityImpactChanged } = 
+            calculateInstantaneousImpacts(epicenterLatlng, magnitude, depth, maxImpactRadiusKm);
+        
+        latestEpicenterCardSpan.textContent = `${epicenterLatlng.lat.toFixed(2)}, ${epicenterLatlng.lng.toFixed(2)}`;
+        latestImpactRadiusCardSpan.textContent = `${maxImpactRadiusKm.toFixed(0)} km`;
+        latestTotalCasualtiesCardSpan.textContent = `~${totalCasualtiesThisEvent.toLocaleString()}`;
+        
+        if (cityImpactChanged) {
+            updateGlobalCityImpactList();
+        }
+
+        const simulation = {
+            id: simId, epicenter: epicenterLatlng, magnitude: magnitude, 
+            maxImpactRadiusKm: maxImpactRadiusKm, 
+            epicenterMarker: epicenterMarker,
+            visualLayers: [], 
+            visualCleanupScheduled: false
+        };
+        activeSimulations.push(simulation);
+        if(activeSimulations.length > 10) { 
+            const oldSim = activeSimulations.shift(); 
+             if (!oldSim.visualCleanupScheduled) { 
+                oldSim.visualLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+                if (map.hasLayer(oldSim.epicenterMarker)) map.removeLayer(oldSim.epicenterMarker);
+            }
+        }
+        startVisualsOnlyAnimation(simulation);
+    }
+
+    function calculateMaxImpactRadius(magnitude) {
+        return 60 * Math.pow(Math.max(0, magnitude - 5.8), 2.1);
+    }
+    
+    function calculateInstantaneousImpacts(epicenter, magnitude, depth, maxImpactRadiusKm) {
+        const energyFactor = Math.pow(10, 1.5 * (magnitude - 6.0));
+        let tsunamigenicEfficiency = 0.05;
+        if (depth < 30) tsunamigenicEfficiency = 1.2;
+        else if (depth < 70) tsunamigenicEfficiency = 0.8;
+        else if (depth < 150) tsunamigenicEfficiency = 0.2;
+
+        let currentEventTotalCasualties = 0;
+        let cityImpactChangedInThisStep = false;
+
+        worldMajorCities.forEach(city => {
+            const cityLatlng = L.latLng(city.lat, city.lng);
+            const distanceKm = epicenter.distanceTo(cityLatlng) / 1000;
+            
+            if (distanceKm < maxImpactRadiusKm) { 
+                const proximityFactor = Math.pow(Math.max(0, 1 - (distanceKm / (maxImpactRadiusKm + 0.1))), 2.2);
+                let impactIntensity = energyFactor * tsunamigenicEfficiency * proximityFactor;
+                let affectedPercentage = 0;
+
+                if (impactIntensity > 50)      affectedPercentage = 0.01 + Math.min(0.05, (impactIntensity - 50) / 8000);
+                else if (impactIntensity > 10) affectedPercentage = 0.001 + Math.min(0.009, (impactIntensity - 10) / 2000);
+                else if (impactIntensity > 0.2)affectedPercentage = Math.min(0.001, impactIntensity / 5000);
+                
+                affectedPercentage = Math.min(affectedPercentage, 0.10);
+                let cityCasualtiesThisEventForThisCity = Math.floor(city.population * affectedPercentage);
+                
+                currentEventTotalCasualties += cityCasualtiesThisEventForThisCity;
+
+                if (cityCasualtiesThisEventForThisCity > (globalCityImpacts[city.name]?.casualties || 0) ) {
+                    globalCityImpacts[city.name] = { 
+                        casualties: cityCasualtiesThisEventForThisCity, 
+                        population: city.population
+                    };
+                    cityImpactChangedInThisStep = true;
+                }
+            }
+        });
+        return { totalCasualtiesThisEvent: currentEventTotalCasualties, cityImpactChanged: cityImpactChangedInThisStep };
+    }
+
+    function startVisualsOnlyAnimation(sim) {
+        const RIPPLE_COUNT = 6; 
+        const RIPPLE_SPREAD_MS = 150;
+        const MAX_VISUAL_RADIUS_M = sim.maxImpactRadiusKm * 1000 * 1.05;
+
+        const damageColors = [
+             { radiusFactor: 0.15, color: `rgba(255,59,48,${0.1 + sim.magnitude * 0.02})` }, // Apple Red base
+             { radiusFactor: 0.4, color: `rgba(255,149,0,${0.08 + sim.magnitude * 0.015})` }, // Apple Orange base
+             { radiusFactor: 0.8, color: `rgba(255,204,0,${0.07 + sim.magnitude * 0.01})` }  // Apple Yellow base
+        ];
+        damageColors.sort((a,b) => b.radiusFactor - a.radiusFactor).forEach(zone => {
+            const zoneRadM = sim.maxImpactRadiusKm * 1000 * zone.radiusFactor;
+            if (zoneRadM > 0) {
+                const dCircle = L.circle(sim.epicenter, {radius: zoneRadM, fillColor: zone.color, fillOpacity:1, weight:0, interactive:false, pane:'shadowPane'}).addTo(map);
+                sim.visualLayers.push(dCircle);
+            }
+        });
+
+        let ripplesSpawned = 0;
+        const visualStartTime = performance.now();
+
+        function animateVisuals() {
+            if (sim.visualCleanupScheduled) return;
+            const elapsedMs = performance.now() - visualStartTime;
+            if (ripplesSpawned < RIPPLE_COUNT && elapsedMs < SIMULATION_VISUAL_LIFESPAN_MS && elapsedMs > ripplesSpawned * RIPPLE_SPREAD_MS) {
+                createVisualRipple(sim, MAX_VISUAL_RADIUS_M, RIPPLE_ANIMATION_DURATION_MS);
+                ripplesSpawned++;
+            }
+            if (elapsedMs < SIMULATION_VISUAL_LIFESPAN_MS) {
+                requestAnimationFrame(animateVisuals);
+            } else { 
+                if (!sim.visualCleanupScheduled) {
+                    sim.visualLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+                    sim.visualLayers = [];
+                    if (map.hasLayer(sim.epicenterMarker)) map.removeLayer(sim.epicenterMarker);
+                    sim.visualCleanupScheduled = true;
+                    activeSimulations = activeSimulations.filter(s => s.id !== sim.id);
+                }
+            }
+        }
+        requestAnimationFrame(animateVisuals);
+    }
+
+    function createVisualRipple(sim, maxRadiusM, durationMs) {
+        if (sim.visualCleanupScheduled) return;
+        const ripple = L.circle(sim.epicenter, {
+            radius: 0,
+            color: `rgba(0, 122, 255, ${0.3 + Math.min(0.4, (sim.magnitude-6)*0.1)})`, // Apple Blue
+            weight: 1.5, // Clean, consistent weight
+            fill: false,
+            opacity: 0.7, 
+            interactive:false,
+            pane:'overlayPane' 
+        }).addTo(map);
+        sim.visualLayers.push(ripple);
+        
+        const rStartTime = performance.now();
+        function animateRippleFrame(ts) {
+            if (sim.visualCleanupScheduled && map.hasLayer(ripple)) {
+                map.removeLayer(ripple); return;
+            }
+            const el = ts - rStartTime; let prog = el / durationMs;
+            if (prog < 1 && map.hasLayer(ripple) && !sim.visualCleanupScheduled) {
+                ripple.setRadius(prog * maxRadiusM);
+                // Smoother fade out, more subtle
+                ripple.setStyle({ opacity: 0.7 * (1 - Math.pow(prog, 2.5)) }); 
+                requestAnimationFrame(animateRippleFrame);
+            } else {
+                if (map.hasLayer(ripple)) map.removeLayer(ripple);
+            }
+        }
+        requestAnimationFrame(animateRippleFrame);
+    }
+    
+    function updateGlobalCityImpactList() {
+        cityImpactUl.innerHTML = '';
+        let affectedCitiesInList = 0;
+        const sortedCities = Object.entries(globalCityImpacts)
+            .map(([name, data]) => ({ name, casualties: data.casualties, population: data.population }))
+            .filter(c => c.casualties > 0)
+            .sort((a, b) => b.casualties - a.casualties);
+
+        sortedCities.forEach(item => {
+            affectedCitiesInList++;
+            const li = document.createElement('li');
+            li.textContent = `${item.name}: ~${item.casualties.toLocaleString()}`;
+            li.className = item.casualties > item.population * 0.005 ? 'affected' : 'minor-affected';
+            cityImpactUl.appendChild(li);
+        });
+        if (affectedCitiesInList === 0) {
+            cityImpactUl.innerHTML = '<li>Awaiting simulation data.</li>';
+        }
+    }
+
+    initMap();
+</script>
+</body>
+</html>

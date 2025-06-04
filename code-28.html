@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Interactive Wargame Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        #map { height: 75vh; width: 100%; border-bottom: 2px solid #333; }
+        .controls { padding: 10px; background-color: #f0f0f0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .control-group { border: 1px solid #ccc; padding: 8px; border-radius: 5px; background-color: #fff; }
+        .control-group h3 { margin-top: 0; margin-bottom: 5px; font-size: 1em; }
+        button { padding: 8px 12px; border: 1px solid #007bff; background-color: #007bff; color: white; cursor: pointer; border-radius: 4px; }
+        button:hover { background-color: #0056b3; }
+        button.active { background-color: #28a745; border-color: #28a745; }
+        button.red-team { background-color: #dc3545; border-color: #dc3545; }
+        button.red-team:hover { background-color: #c82333; }
+        button.red-team.active { background-color: #bd2130; }
+        button.action-btn { background-color: #ffc107; border-color: #ffc107; color: black;}
+        button.action-btn:hover { background-color: #e0a800; }
+        button.action-btn.active { background-color: #d39e00; }
+        button.reset-btn { background-color: #6c757d; border-color: #6c757d;}
+        button.reset-btn:hover { background-color: #5a6268; }
+        #info-panel { padding: 10px; background-color: #e9ecef; font-size: 0.9em; min-height: 50px; }
+        .leaflet-marker-icon.selected-unit { border: 3px solid gold !important; border-radius: 50%; box-shadow: 0 0 10px yellow; }
+        
+        /* Custom SVG Icons */
+        .blue-unit-icon, .red-unit-icon {
+            background-repeat: no-repeat;
+            background-size: contain;
+            width: 24px !important;
+            height: 24px !important;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .blue-unit-icon {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="blue" stroke="white" stroke-width="5"/></svg>');
+        }
+        .red-unit-icon {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="red" stroke="white" stroke-width="5"/></svg>');
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    <div class="controls">
+        <div class="control-group">
+            <h3>Select Team to Place</h3>
+            <button id="selectBlueTeamBtn" onclick="setCurrentTeam('blue')">Blue Team</button>
+            <button id="selectRedTeamBtn" class="red-team" onclick="setCurrentTeam('red')">Red Team</button>
+        </div>
+        <div class="control-group">
+            <h3>Actions</h3>
+            <button id="moveBtn" class="action-btn" onclick="activateMode('move')">Move Unit</button>
+            <button id="attackBtn" class="action-btn" onclick="activateMode('attack')">Attack Unit</button>
+        </div>
+        <div class="control-group">
+            <h3>Game</h3>
+            <button id="resetBtn" class="reset-btn" onclick="resetGame()">Reset All</button>
+        </div>
+    </div>
+    <div id="info-panel">
+        Select a team to place units, or click a unit to select it for actions.
+    </div>
+
+    <script>
+        (function() {
+            const map = L.map('map').setView([51.505, -0.09], 5); // Centered on London, zoom level 5
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+
+            let currentTeam = 'blue'; // 'blue' or 'red'
+            let currentMode = 'place'; // 'place', 'move', 'attack'
+            let selectedUnit = null;
+            let units = []; // To store unit objects {marker, id, team, health}
+            let unitIdCounter = 0;
+
+            const blueTeamButton = document.getElementById('selectBlueTeamBtn');
+            const redTeamButton = document.getElementById('selectRedTeamBtn');
+            const moveButton = document.getElementById('moveBtn');
+            const attackButton = document.getElementById('attackBtn');
+            const infoPanel = document.getElementById('info-panel');
+
+            // --- Icons ---
+            function getUnitIcon(team) {
+                return L.divIcon({
+                    className: `${team}-unit-icon`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+            }
+            
+            // --- Global Functions (exposed via window for button onclick) ---
+            window.setCurrentTeam = function(team) {
+                currentTeam = team;
+                currentMode = 'place';
+                updateButtonStates();
+                infoPanel.textContent = `Placing units for ${team.toUpperCase()} team. Click on map to add.`;
+                deselectUnit();
+            }
+
+            window.activateMode = function(mode) {
+                if (!selectedUnit && (mode === 'move' || mode === 'attack')) {
+                    infoPanel.textContent = 'Please select a unit first to perform this action.';
+                    return;
+                }
+                currentMode = mode;
+                updateButtonStates();
+                if (mode === 'move') infoPanel.textContent = `MOVE MODE: Click on map to move selected ${selectedUnit.options.team.toUpperCase()} unit.`;
+                if (mode === 'attack') infoPanel.textContent = `ATTACK MODE: Click on an enemy unit to attack.`;
+            }
+
+            window.resetGame = function() {
+                units.forEach(unit => map.removeLayer(unit.marker));
+                units = [];
+                unitIdCounter = 0;
+                deselectUnit();
+                currentMode = 'place';
+                setCurrentTeam('blue'); // Default to blue
+                infoPanel.textContent = 'Game reset. Select a team to place units.';
+                updateButtonStates();
+            }
+
+            // --- Core Logic ---
+            function updateButtonStates() {
+                blueTeamButton.classList.toggle('active', currentTeam === 'blue' && currentMode === 'place');
+                redTeamButton.classList.toggle('active', currentTeam === 'red' && currentMode === 'place');
+                moveButton.classList.toggle('active', currentMode === 'move');
+                attackButton.classList.toggle('active', currentMode === 'attack');
+            }
+
+            function addUnit(latlng) {
+                const unitId = unitIdCounter++;
+                const icon = getUnitIcon(currentTeam);
+                const marker = L.marker(latlng, { 
+                    icon: icon, 
+                    draggable: false, // Keep it simple, no dragging
+                    unitId: unitId,
+                    team: currentTeam,
+                    health: 100 // Basic health
+                }).addTo(map);
+
+                marker.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e); // Prevent map click event
+                    onUnitClick(this);
+                });
+
+                units.push({ id: unitId, marker: marker, team: currentTeam, health: 100 });
+                console.log(`Added unit ${unitId} for ${currentTeam} at ${latlng}`);
+            }
+
+            function onUnitClick(clickedMarker) {
+                if (currentMode === 'attack') {
+                    if (selectedUnit && selectedUnit !== clickedMarker && selectedUnit.options.team !== clickedMarker.options.team) {
+                        performAttack(selectedUnit, clickedMarker);
+                    } else if (selectedUnit === clickedMarker) {
+                        infoPanel.textContent = "Cannot attack self. Select an enemy unit.";
+                    } else if (selectedUnit && selectedUnit.options.team === clickedMarker.options.team) {
+                        infoPanel.textContent = "Cannot attack friendly unit. Select an enemy unit.";
+                    } else {
+                         infoPanel.textContent = "Select your unit first, then activate attack mode, then click an enemy.";
+                    }
+                } else {
+                    // Standard selection
+                    if (selectedUnit) {
+                        selectedUnit.getElement().classList.remove('selected-unit');
+                    }
+                    selectedUnit = clickedMarker;
+                    selectedUnit.getElement().classList.add('selected-unit');
+                    currentMode = 'none'; // Await action selection
+                    updateButtonStates();
+                    infoPanel.textContent = `Unit ${selectedUnit.options.unitId} (${selectedUnit.options.team.toUpperCase()}) selected. Choose an action (Move/Attack) or deselect.`;
+                }
+            }
+            
+            function deselectUnit() {
+                if (selectedUnit) {
+                    selectedUnit.getElement().classList.remove('selected-unit');
+                    selectedUnit = null;
+                }
+                if(currentMode !== 'place') currentMode = 'none'; // if not placing, go to neutral state
+                updateButtonStates();
+            }
+
+            function performMove(latlng) {
+                if (selectedUnit) {
+                    selectedUnit.setLatLng(latlng);
+                    infoPanel.textContent = `Unit ${selectedUnit.options.unitId} moved to ${latlng.lat.toFixed(3)}, ${latlng.lng.toFixed(3)}.`;
+                    deselectUnit(); // Deselect after move
+                    currentMode = 'none'; // Reset mode
+                    updateButtonStates();
+                }
+            }
+
+            function performAttack(attackerMarker, targetMarker) {
+                // Very simple: attacker is selected, target is clicked enemy
+                // For demo, just remove the target
+                map.removeLayer(targetMarker);
+                units = units.filter(u => u.marker !== targetMarker);
+                
+                infoPanel.textContent = `Unit ${attackerMarker.options.unitId} (${attackerMarker.options.team}) attacked and destroyed enemy unit ${targetMarker.options.unitId} (${targetMarker.options.team}).`;
+                
+                // If attacker was destroyed by some counter-attack logic (not implemented here), handle it
+                // For now, attacker remains.
+                deselectUnit(); // Deselect attacker after attack
+                currentMode = 'none'; // Reset mode
+                updateButtonStates();
+            }
+
+            map.on('click', function(e) {
+                if (currentMode === 'place') {
+                    addUnit(e.latlng);
+                } else if (currentMode === 'move' && selectedUnit) {
+                    performMove(e.latlng);
+                } else if (currentMode !== 'attack' && currentMode !== 'move') { 
+                    // Clicking map deselects if not in an active unit-targeting mode
+                    deselectUnit();
+                    infoPanel.textContent = 'Map clicked. Select a team to place units, or click a unit to select it.';
+                }
+            });
+
+            // Initial setup
+            setCurrentTeam('blue'); // Start with blue team pre-selected for placing
+
+        })(); // End of IIFE
+    </script>
+
+</body>
+</html>

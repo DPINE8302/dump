@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Brat Generator</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background-color: #39FF14; /* Iconic Brat Green */
+            color: #000000;
+        }
+
+        .traffic-lights {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+        .traffic-lights .light {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0,0,0,0.3);
+        }
+        .traffic-lights .red { background-color: #FF5F57; }
+        .traffic-lights .yellow { background-color: #FEBC2E; }
+        .traffic-lights .green-light { background-color: #28C840; }
+
+        .generator-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+        }
+
+        #coverCanvas {
+            /* Max width/height to leave space for controls below */
+            max-width: calc(100vw - 40px);
+            max-height: calc(70vh - 40px); /* Ensure space for input below */
+            object-fit: contain;
+            margin-bottom: 30px; /* Space between canvas and input */
+        }
+        
+        #textInput {
+            width: clamp(280px, 60%, 500px);
+            padding: 12px 18px;
+            font-size: 18px;
+            font-family: 'Arial', sans-serif;
+            border: none; /* Original often has borderless or integrated look */
+            border-radius: 25px; /* Pill shape */
+            text-align: center;
+            background-color: #FFFFFF;
+            color: #000000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 10px; /* Space to "screenshot" text */
+        }
+        #textInput::placeholder {
+            color: #888888;
+        }
+
+        .save-instruction {
+            font-size: 14px;
+            font-family: 'Arial', sans-serif;
+            font-weight: normal;
+            color: #000000;
+            margin-bottom: 20px; /* Space to footer */
+        }
+        
+        footer {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            font-family: 'Arial', sans-serif;
+            color: rgba(0, 0, 0, 0.8);
+        }
+        footer a {
+            color: rgba(0, 0, 0, 0.8);
+            text-decoration: none;
+            margin: 0 5px;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="traffic-lights">
+        <span class="light red"></span>
+        <span class="light yellow"></span>
+        <span class="light green-light"></span>
+    </div>
+
+    <div class="generator-container">
+        <canvas id="coverCanvas"></canvas>
+        <input type="text" id="textInput" value="brat" maxlength="50">
+        <p class="save-instruction">Take A Screenshot To Save!</p>
+    </div>
+
+    <footer>
+        <span>© 2025 Charli xcx & Atlantic Records</span> <!-- Example, adjust as needed -->
+        <a href="#">Cookies Settings</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Use</a>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const textInput = document.getElementById('textInput');
+            const canvas = document.getElementById('coverCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Style Configuration (Primary Brat Style)
+            const STYLE_CONFIG = {
+                bgColor: '#39FF14', // Green background for canvas (body already has it)
+                textColor: '#000000',
+                fontFamily: '"Arial Black", "Impact", sans-serif', // A bold, wide fallback
+                textCase: 'lowercase', // Typically lowercase for "brat"
+                effects: { blur: '1px' } // Slight blur
+            };
+
+            function resizeCanvasAndDraw() {
+                const container = document.querySelector('.generator-container');
+                // Calculate available height considering elements below canvas
+                const inputHeight = textInput.offsetHeight || 50; //Approx height
+                const instructionHeight = document.querySelector('.save-instruction').offsetHeight || 20;
+                const footerHeight = document.querySelector('footer').offsetHeight || 30;
+                const verticalPadding = 80; // General padding
+
+                const availableWidth = container.clientWidth * 0.95;
+                const availableHeight = container.clientHeight - inputHeight - instructionHeight - footerHeight - verticalPadding;
+                
+                const size = Math.min(availableWidth, availableHeight, 700); // Cap max size
+
+                canvas.width = size;
+                canvas.height = size * 0.75; // More rectangular like some displays, adjust ratio as needed (e.g. size for square)
+
+                drawCover();
+            }
+
+            function drawCover() {
+                if (!canvas.width || !canvas.height) return;
+
+                let rawText = textInput.value.trim();
+                // If input is empty, don't draw text or draw placeholder from input
+                // For bratgenerator, it usually keeps showing the last typed text or default.
+                // Let's stick to current input value, or default "brat" if empty.
+                if (!rawText && textInput.placeholder) rawText = textInput.placeholder;
+                else if (!rawText) rawText = "brat"; // Default if truly empty
+
+                let text;
+                if (STYLE_CONFIG.textCase === 'uppercase') text = rawText.toUpperCase();
+                else if (STYLE_CONFIG.textCase === 'lowercase') text = rawText.toLowerCase();
+                else text = rawText;
+
+                // Clear canvas (already green from body, but good practice for canvas)
+                ctx.fillStyle = STYLE_CONFIG.bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Apply effects (blur)
+                if (STYLE_CONFIG.effects && STYLE_CONFIG.effects.blur) {
+                    ctx.filter = `blur(${STYLE_CONFIG.effects.blur})`;
+                } else {
+                    ctx.filter = 'none';
+                }
+
+                // Text Styling
+                ctx.fillStyle = STYLE_CONFIG.textColor;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Dynamic Font Sizing
+                const padding = canvas.width * 0.05;
+                const maxWidth = canvas.width - (padding * 2);
+                const maxHeight = canvas.height - (padding * 2);
+
+                let fontSize = maxHeight * 0.9; // Start with a large font relative to height
+                ctx.font = `bold ${fontSize}px ${STYLE_CONFIG.fontFamily}`;
+                
+                // Reduce font size until it fits width
+                while (ctx.measureText(text).width > maxWidth && fontSize > 10) {
+                    fontSize -= 1;
+                    ctx.font = `bold ${fontSize}px ${STYLE_CONFIG.fontFamily}`;
+                }
+                // Ensure it also fits height (though less likely an issue for single line)
+                if (fontSize > maxHeight) {
+                     fontSize = maxHeight;
+                     ctx.font = `bold ${fontSize}px ${STYLE_CONFIG.fontFamily}`;
+                }
+
+
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+                // Reset filter after drawing text to prevent it affecting other elements if canvas was drawn elsewhere
+                ctx.filter = 'none';
+            }
+
+            textInput.addEventListener('input', drawCover);
+            window.addEventListener('resize', resizeCanvasAndDraw);
+
+            // Initial setup
+            if (!textInput.value) { // Ensure placeholder shows if input is empty
+                textInput.value = "brat"; // Default text in input
+            }
+            resizeCanvasAndDraw();
+        });
+    </script>
+</body>
+</html>

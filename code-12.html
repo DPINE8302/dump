@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Win's Portfolio - Digital Frontier</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Reset / Base Styles */
+        :root {
+            --bg-primary: #0f0c29;
+            --bg-secondary: #1a123f;
+            --bg-tertiary: #24243e;
+            --accent-primary: #00c6ff; /* Neon Blue */
+            --accent-secondary: #e040fb; /* Neon Pink/Purple */
+            --accent-tertiary: #fdd835; /* Gold/Yellowish */
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-color: rgba(0, 198, 255, 0.3);
+            --glitch-color1: var(--accent-primary);
+            --glitch-color2: var(--accent-secondary);
+
+            --font-heading: 'Orbitron', sans-serif;
+            --font-body: 'Roboto', sans-serif;
+
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            padding-top: 70px; /* For fixed header */
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        section {
+            padding: 80px 0;
+            position: relative;
+            overflow: hidden; /* For pseudo-elements */
+        }
+
+        section:nth-child(odd) {
+            background-color: var(--bg-secondary);
+        }
+
+        h1, h2, h3 {
+            font-family: var(--font-heading);
+            color: var(--accent-primary);
+            margin-bottom: 20px;
+            text-shadow: 0 0 5px var(--accent-primary);
+        }
+
+        h1 { font-size: 3rem; }
+        h2 { font-size: 2.5rem; text-align: center; }
+        h3 { font-size: 1.8rem; color: var(--accent-secondary); }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+        }
+
+        a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: color var(--transition-speed) ease;
+        }
+
+        a:hover {
+            color: var(--accent-secondary);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+            font-family: var(--font-heading);
+            border-radius: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 198, 255, 0.3);
+            color: var(--bg-primary); /* Ensure text color remains on hover */
+        }
+
+        .hidden {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Scroll Progress Bar */
+        #progress-bar {
+            position: fixed;
+            top: 0; /* Changed from top:70px to top:0 for modern design */
+            left: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            width: 0%;
+            z-index: 1001; /* Above header */
+            transition: width 0.1s linear;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 0;
+            background-color: rgba(15, 12, 41, 0.8); /* Semi-transparent */
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            transition: background-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+            border-bottom: 1px solid transparent;
+        }
+
+        header.scrolled {
+            background-color: rgba(26, 18, 63, 0.95); /* Darker on scroll */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            color: var(--text-primary);
+            cursor: default; /* For easter egg, make it seem non-interactive initially */
+        }
+        .logo .win-name {
+            color: var(--accent-primary);
+            transition: text-shadow 0.3s ease, color 0.3s ease;
+        }
+        .logo .win-name:hover {
+            text-shadow: 0 0 10px var(--accent-primary);
+        }
+
+
+        nav ul {
+            list-style: none;
+            display: flex;
+        }
+
+        nav ul li {
+            margin-left: 25px;
+        }
+
+        nav ul li a {
+            color: var(--text-secondary);
+            font-weight: bold;
+            padding-bottom: 5px;
+            border-bottom: 2px solid transparent;
+        }
+
+        nav ul li a:hover, nav ul li a.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .menu-toggle {
+            display: none; /* For mobile */
+            font-size: 1.5rem;
+            color: var(--accent-primary);
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        #hero {
+            height: calc(100vh - 70px); /* Full viewport minus header */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
+            margin-bottom: 10px;
+            animation: glitch 2s linear infinite alternate-reverse;
+        }
+        .hero-content h1 .win-name-hero {
+            color: var(--accent-primary); /* Special styling for "Win" */
+            cursor: pointer; /* Hint for easter egg */
+        }
+
+
+        .hero-content p {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 30px;
+        }
+
+        @keyframes glitch {
+            0% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            25% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            26% { text-shadow: -0.05em 0 0 var(--glitch-color1), 0.025em 0.025em 0 var(--glitch-color2); }
+            27% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            50% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            51% { text-shadow: 0.025em 0.05em 0 var(--glitch-color1), 0.05em 0 0 var(--glitch-color2); }
+            52% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            75% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            76% { text-shadow: -0.025em -0.025em 0 var(--glitch-color1), -0.05em -0.025em 0 var(--glitch-color2); }
+            77% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+            100% { text-shadow: 0.05em 0 0 var(--glitch-color1), -0.05em 0 0 var(--glitch-color2); }
+        }
+
+
+        /* About Section */
+        #about .about-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        #about .about-text { flex: 2; }
+        #about .about-image-container {
+            flex: 1;
+            text-align: center;
+        }
+        #about .about-image-container img {
+            max-width: 300px;
+            border-radius: 50%;
+            border: 5px solid var(--accent-primary);
+            box-shadow: 0 0 20px var(--accent-primary);
+        }
+
+        /* Skills Section */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        .skill-card {
+            background-color: var(--bg-tertiary);
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+        }
+        .skill-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 198, 255, 0.2);
+        }
+        .skill-card h4 {
+            font-family: var(--font-heading);
+            color: var(--accent-tertiary);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        .skill-bar-container {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            height: 15px;
+            overflow: hidden;
+        }
+        .skill-bar-level {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary));
+            border-radius: 5px;
+            width: 0; /* JS will set this */
+            transition: width 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            text-align: right;
+            padding-right: 5px;
+            font-size: 0.8em;
+            color: var(--bg-primary);
+        }
+
+        /* Achievements (Timeline) Section */
+        .timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 0;
+        }
+        .timeline::before { /* The central line */
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(var(--accent-primary), var(--accent-secondary));
+            border-radius: 2px;
+        }
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            width: 50%;
+            margin-bottom: 30px;
+        }
+        .timeline-item:nth-child(odd) {
+            left: 0;
+            padding-right: 60px; /* Space for dot + text */
+            text-align: right;
+        }
+        .timeline-item:nth-child(even) {
+            left: 50%;
+            padding-left: 60px; /* Space for dot + text */
+        }
+        .timeline-item::after { /* The dot */
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--bg-primary);
+            border: 4px solid var(--accent-primary);
+            top: 20px;
+            z-index: 1;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+        .timeline-item:nth-child(odd)::after {
+            right: -10px; /* (width/2) */
+            transform: translateX(50%);
+        }
+        .timeline-item:nth-child(even)::after {
+            left: -10px; /* (width/2) */
+            transform: translateX(-50%);
+        }
+        .timeline-content {
+            padding: 20px;
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .timeline-content .date {
+            font-family: var(--font-heading);
+            color: var(--accent-tertiary);
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .timeline-content h4 {
+            color: var(--accent-primary);
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+
+        /* Feature Video Section */
+        #feature-video .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+            max-width: 900px;
+            margin: 0 auto;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.2);
+        }
+        #feature-video iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Photography Section */
+        .photo-collage {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .collage-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: border-color var(--transition-speed) ease, transform var(--transition-speed) ease;
+        }
+        .collage-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        .collage-item:hover img {
+            transform: scale(1.1);
+        }
+        .collage-item:hover {
+            border-color: var(--accent-primary);
+        }
+        .collage-item .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 198, 255, 0.5);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            font-size: 1.5rem;
+            font-family: var(--font-heading);
+        }
+        .collage-item:hover .overlay {
+            opacity: 1;
+        }
+
+        /* Lightbox for Photography */
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .lightbox.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 5px;
+            box-shadow: 0 0 30px rgba(0, 198, 255, 0.5);
+        }
+        .lightbox .close-lightbox {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 2.5rem;
+            color: white;
+            cursor: pointer;
+        }
+
+
+        /* Contact Section */
+        #contact .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        #contact .btn {
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+        }
+        footer p { color: var(--text-secondary); }
+        .footer-icon {
+            font-size: 1.5rem; /* For astronaut */
+            cursor: pointer;
+            display: inline-block;
+            margin-top: 10px;
+            transition: transform 0.3s ease;
+        }
+        .footer-icon:hover {
+            transform: scale(1.2) rotate(10deg);
+        }
+
+        /* Konami Code Overlay */
+        #konami-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: none; /* Hidden by default */
+            overflow: hidden;
+        }
+        #matrix-canvas {
+            display: block; /* remove bottom space */
+        }
+
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body { padding-top: 60px; }
+            .logo { font-size: 1.5rem; }
+            nav ul {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 60px; /* Adjust to header height */
+                left: 0;
+                width: 100%;
+                background-color: var(--bg-secondary);
+                padding: 20px 0;
+                border-top: 1px solid var(--border-color);
+            }
+            nav ul.active { display: flex; }
+            nav ul li {
+                margin: 10px 0;
+                text-align: center;
+            }
+            .menu-toggle { display: block; }
+
+            #hero { height: calc(100vh - 60px); }
+            .hero-content h1 { font-size: 2.8rem; }
+            .hero-content p { font-size: 1.2rem; }
+
+            #about .about-content { flex-direction: column; }
+            #about .about-image-container img { max-width: 200px; margin-bottom: 20px;}
+
+            .timeline::before { left: 30px; }
+            .timeline-item { width: 100%; padding-left: 70px; padding-right: 20px; text-align: left !important; }
+            .timeline-item:nth-child(odd) { left: 0; }
+            .timeline-item:nth-child(even) { left: 0; }
+            .timeline-item::after { left: 30px; transform: translateX(-50%); }
+            .timeline-item:nth-child(odd)::after, .timeline-item:nth-child(even)::after {
+                 /* Adjust so all dots are on the left line */
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="progress-bar"></div>
+    <div id="konami-overlay"><canvas id="matrix-canvas"></canvas></div>
+
+    <header>
+        <div class="container nav-container">
+            <nav>
+                <div class="logo">WIN<span class="win-name">'S</span> PORTFOLIO</div>
+                <ul id="nav-links">
+                    <li><a href="#about" class="nav-link">About</a></li>
+                    <li><a href="#skills" class="nav-link">Skills</a></li>
+                    <li><a href="#achievements" class="nav-link">Achievements</a></li>
+                    <li><a href="#feature-video" class="nav-link">Video</a></li>
+                    <li><a href="#photography" class="nav-link">Photos</a></li>
+                    <li><a href="#contact" class="nav-link">Contact</a></li>
+                </ul>
+                <div class="menu-toggle" id="menu-toggle-button">☰</div>
+            </nav>
+        </div>
+    </header>
+
+    <section id="hero">
+        <canvas id="particle-canvas"></canvas>
+        <div class="hero-content">
+            <h1><span class="win-name-hero">WIN</span>'S PORTFOLIO</h1>
+            <p>No risk. No story.</p>
+            <a href="#about" class="btn">Explore My Journey</a>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2 class="hidden">About Me</h2>
+            <div class="about-content">
+                <div class="about-text hidden">
+                    <p>Hello, I'm Win (Kirati Rattanaporn), a passionate technology and creative enthusiast from Bangkok, Thailand. Currently in Grade 10, I have a strong interest in technology, astronomy, photography, and film. Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. My goal is to transfer to SPSM School to study multimedia and later pursue a degree at Chulalongkorn University's Faculty of Communication Arts.</p>
+                    <p>You can learn more about me on my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" class="inline-link">Wikipedia page</a>.</p>
+                </div>
+                <div class="about-image-container hidden">
+                    <!-- Placeholder for a profile picture. You can replace Pic8.webp with an actual profile photo if you have one. -->
+                    <img src="Pic8.webp" alt="Win Rattanaporn">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="skills">
+        <div class="container">
+            <h2 class="hidden">My Skillset</h2>
+            <div class="skills-grid">
+                <div class="skill-card hidden">
+                    <h4>Photography</h4>
+                    <div class="skill-bar-container">
+                        <div class="skill-bar-level" data-level="75%">75%</div>
+                    </div>
+                    <p>Capturing moments and telling stories through the lens.</p>
+                </div>
+                <div class="skill-card hidden">
+                    <h4>Technology</h4>
+                    <div class="skill-bar-container">
+                        <div class="skill-bar-level" data-level="85%">85%</div>
+                    </div>
+                    <p>Proficient with various tech tools, robotics, and digital media.</p>
+                </div>
+                <div class="skill-card hidden">
+                    <h4>Film & Video</h4>
+                    <div class="skill-bar-container">
+                        <div class="skill-bar-level" data-level="70%">70%</div>
+                    </div>
+                    <p>Creating engaging video content from concept to final cut.</p>
+                </div>
+                 <div class="skill-card hidden">
+                    <h4>Creative Problem Solving</h4>
+                    <div class="skill-bar-container">
+                        <div class="skill-bar-level" data-level="80%">80%</div>
+                    </div>
+                    <p>Finding innovative solutions in tech and creative projects.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="achievements">
+        <div class="container">
+            <h2 class="hidden">Achievements & Milestones</h2>
+            <div class="timeline">
+                <div class="timeline-item hidden">
+                    <div class="timeline-content">
+                        <span class="date">2022</span><h4>First Gold in Robotics</h4>
+                        <p>Marked the beginning of my journey in technology and innovation.</p>
+                    </div>
+                </div>
+                <div class="timeline-item hidden">
+                    <div class="timeline-content">
+                        <span class="date">2023</span><h4>Multiple Robotics Golds & English Award</h4>
+                        <p>Continued success in robotics and demonstrated strong language skills.</p>
+                    </div>
+                </div>
+                 <div class="timeline-item hidden">
+                    <div class="timeline-content">
+                        <span class="date">2023</span><h4>Southern EP Open House - Math Project</h4>
+                        <p>Gold award for excellence in a mathematics project.</p>
+                    </div>
+                </div>
+                <div class="timeline-item hidden">
+                    <div class="timeline-content">
+                        <span class="date">2024</span><h4>National Level Robotics Golds</h4>
+                        <p>Achieved recognition at the national level for robotics expertise.</p>
+                    </div>
+                </div>
+                <div class="timeline-item hidden">
+                    <div class="timeline-content">
+                        <span class="date">2024</span><h4>Athletics & Regional English Award</h4>
+                        <p>Silver in 200m running and a silver award in a regional English contest.</p>
+                    </div>
+                </div>
+                <div class="timeline-item hidden">
+                    <div class="timeline-content">
+                        <span class="date">2024</span><h4>Southern EP Open House - Multi-Skills</h4>
+                        <p>Gold award in the multi-skills competition, showcasing versatility.</p>
+                    </div>
+                </div>
+                <!-- Add more timeline items as needed, following the structure -->
+            </div>
+        </div>
+    </section>
+
+    <section id="feature-video">
+        <div class="container">
+            <h2 class="hidden">Feature Video</h2>
+            <div class="video-wrapper hidden">
+                <iframe src="https://www.youtube.com/embed/BMhot-xCYmk" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </section>
+
+    <section id="photography">
+        <div class="container">
+            <h2 class="hidden">Photography Showcase</h2>
+            <div class="photo-collage">
+                <div class="collage-item hidden" data-src="Pic2.webp"><img src="Pic2.webp" alt="Photo 2"><div class="overlay">View</div></div>
+                <div class="collage-item hidden" data-src="Pic3.webp"><img src="Pic3.webp" alt="Photo 3"><div class="overlay">View</div></div>
+                <div class="collage-item hidden" data-src="Pic4.webp"><img src="Pic4.webp" alt="Photo 4"><div class="overlay">View</div></div>
+                <div class="collage-item hidden" data-src="Pic5.webp"><img src="Pic5.webp" alt="Photo 5"><div class="overlay">View</div></div>
+                <div class="collage-item hidden" data-src="Pic6.webp"><img src="Pic6.webp" alt="Photo 6"><div class="overlay">View</div></div>
+                <div class="collage-item hidden" data-src="Pic10.webp"><img src="Pic10.webp" alt="Photo 10"><div class="overlay">View</div></div>
+                <!-- Add Pic9.webp if it's distinct from Pic8.webp (profile) -->
+                 <div class="collage-item hidden" data-src="Pic9.webp"><img src="Pic9.webp" alt="Photo 9"><div class="overlay">View</div></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="lightbox" id="lightbox">
+        <span class="close-lightbox" id="close-lightbox">&times;</span>
+        <img src="" alt="Lightbox image" id="lightbox-image">
+    </div>
+
+    <section id="contact">
+        <div class="container">
+            <h2 class="hidden">Get In Touch</h2>
+            <p class="hidden" style="text-align:center;">Feel free to reach out to me through the following platforms:</p>
+            <div class="contact-grid">
+                <a href="https://www.instagram.com/Win.rn" target="_blank" class="btn hidden">Instagram (@Win.rn)</a>
+                <a href="https://www.instagram.com/Win.albums" target="_blank" class="btn hidden">Photography (@Win.albums)</a>
+                <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" class="btn hidden">YouTube Channel</a>
+                <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" class="btn hidden">Wikipedia Bio</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© <span id="current-year"></span> Win Rattanaporn. All rights reserved.</p>
+            <p>Designed with a touch of digital magic. <span class="footer-icon" id="footer-secret-icon">🚀</span></p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Welcome, explorer! You've found a hidden message. Try the Konami code for a surprise!");
+            
+            const currentYear = new Date().getFullYear();
+            document.getElementById('current-year').textContent = currentYear;
+
+            // --- Header Scroll Effect ---
+            const header = document.querySelector('header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+
+            // --- Scroll Progress Bar ---
+            const progressBar = document.getElementById('progress-bar');
+            window.addEventListener('scroll', () => {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (scrollTop / scrollHeight) * 100;
+                progressBar.style.width = scrolled + '%';
+            });
+
+            // --- Mobile Navigation ---
+            const menuToggle = document.getElementById('menu-toggle-button');
+            const navLinksContainer = document.getElementById('nav-links');
+            menuToggle.addEventListener('click', () => {
+                navLinksContainer.classList.toggle('active');
+            });
+            // Close mobile nav when a link is clicked
+            document.querySelectorAll('#nav-links a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (navLinksContainer.classList.contains('active')) {
+                        navLinksContainer.classList.remove('active');
+                    }
+                });
+            });
+            
+            // --- Intersection Observer for Animations ---
+            const animatedElements = document.querySelectorAll('.hidden');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        // Animate skill bars when they become visible
+                        if (entry.target.classList.contains('skill-card')) {
+                            const skillBar = entry.target.querySelector('.skill-bar-level');
+                            if (skillBar) {
+                                skillBar.style.width = skillBar.dataset.level;
+                            }
+                        }
+                        // observer.unobserve(entry.target); // Optional: Animate only once
+                    } else {
+                         // Optional: Re-hide if scrolled out of view and you want to re-animate
+                        // entry.target.classList.remove('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            animatedElements.forEach(el => observer.observe(el));
+
+            // --- Particle Background for Hero ---
+            const canvas = document.getElementById('particle-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                let particles = [];
+                canvas.width = window.innerWidth;
+                canvas.height = document.getElementById('hero').offsetHeight; // Match hero height
+
+                window.addEventListener('resize', () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = document.getElementById('hero').offsetHeight;
+                });
+
+                class Particle {
+                    constructor(x, y) {
+                        this.x = x;
+                        this.y = y;
+                        this.size = Math.random() * 2 + 1;
+                        this.speedX = Math.random() * 1 - 0.5;
+                        this.speedY = Math.random() * 1 - 0.5;
+                        this.color = `rgba(0, 198, 255, ${Math.random() * 0.5 + 0.2})`;
+                    }
+                    update() {
+                        this.x += this.speedX;
+                        this.y += this.speedY;
+                        if (this.size > 0.1) this.size -= 0.01;
+                    }
+                    draw() {
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                function initParticles() {
+                    particles = [];
+                    const numberOfParticles = Math.floor(canvas.width / 20);
+                    for (let i = 0; i < numberOfParticles; i++) {
+                        particles.push(new Particle(Math.random() * canvas.width, Math.random() * canvas.height));
+                    }
+                }
+
+                function animateParticles() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    for (let i = 0; i < particles.length; i++) {
+                        particles[i].update();
+                        particles[i].draw();
+                        if (particles[i].size <= 0.1) {
+                            particles.splice(i, 1);
+                            i--;
+                            particles.push(new Particle(Math.random() * canvas.width, Math.random() * canvas.height));
+                        }
+                    }
+                    requestAnimationFrame(animateParticles);
+                }
+                initParticles();
+                animateParticles();
+            }
+
+
+            // --- Lightbox for Photography ---
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const closeLightbox = document.getElementById('close-lightbox');
+            const collageItems = document.querySelectorAll('.collage-item');
+
+            collageItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const imgSrc = item.dataset.src;
+                    lightboxImage.src = imgSrc;
+                    lightbox.classList.add('active');
+                });
+            });
+
+            if (closeLightbox) {
+                closeLightbox.addEventListener('click', () => {
+                    lightbox.classList.remove('active');
+                });
+            }
+            if (lightbox) {
+                lightbox.addEventListener('click', (e) => {
+                    if (e.target === lightbox) { // Close if clicked outside the image
+                        lightbox.classList.remove('active');
+                    }
+                });
+            }
+
+            // --- EASTER EGGS ---
+
+            // 1. Konami Code for Matrix Effect
+            const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+            let konamiIndex = 0;
+            document.addEventListener('keydown', (e) => {
+                if (e.key.toLowerCase() === konamiCode[konamiIndex].toLowerCase()) {
+                    konamiIndex++;
+                    if (konamiIndex === konamiCode.length) {
+                        activateMatrixEffect();
+                        konamiIndex = 0; // Reset
+                    }
+                } else {
+                    konamiIndex = 0;
+                }
+            });
+
+            function activateMatrixEffect() {
+                const overlay = document.getElementById('konami-overlay');
+                const matrixCanvas = document.getElementById('matrix-canvas');
+                if (!overlay || !matrixCanvas) return;
+
+                overlay.style.display = 'block';
+                const ctx = matrixCanvas.getContext('2d');
+                
+                matrixCanvas.height = window.innerHeight;
+                matrixCanvas.width = window.innerWidth;
+                
+                const katakana = 'アカサタナハマヤラワガザダバパイキシチニヒミリギジヂビピウクスツヌフムユルグズヅブプエケセテネヘメレゲゼデベペオコソトノホモヨログゾドボポヴッン';
+                const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                const nums = '0123456789';
+                const alphabet = katakana + latin + nums;
+                
+                const fontSize = 16;
+                const columns = matrixCanvas.width/fontSize;
+                const rainDrops = [];
+                
+                for( let x = 0; x < columns; x++ ) {
+                    rainDrops[x] = 1; 
+                }
+                
+                const drawMatrix = () => {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                    ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                    
+                    ctx.fillStyle = '#0F0'; // Green text
+                    ctx.font = fontSize + 'px monospace';
+                
+                    for(let i = 0; i < rainDrops.length; i++) {
+                        const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                        ctx.fillText(text, i*fontSize, rainDrops[i]*fontSize);
+                        
+                        if(rainDrops[i]*fontSize > matrixCanvas.height && Math.random() > 0.975){
+                            rainDrops[i] = 0;
+                        }
+                        rainDrops[i]++;
+                    }
+                };
+                
+                const matrixInterval = setInterval(drawMatrix, 33);
+
+                // To stop it after a while or on click
+                overlay.addEventListener('click', () => {
+                    clearInterval(matrixInterval);
+                    overlay.style.display = 'none';
+                });
+                setTimeout(() => { // Auto-stop after 15 seconds
+                     if (overlay.style.display === 'block') {
+                        clearInterval(matrixInterval);
+                        overlay.style.display = 'none';
+                     }
+                }, 15000);
+            }
+
+            // 2. Click "WIN" in Hero section multiple times
+            const heroWinName = document.querySelector('.win-name-hero');
+            let winClickCount = 0;
+            if (heroWinName) {
+                heroWinName.addEventListener('click', () => {
+                    winClickCount++;
+                    heroWinName.style.transition = 'transform 0.1s ease-out';
+                    heroWinName.style.transform = `scale(${1 + winClickCount * 0.05})`;
+                    setTimeout(() => heroWinName.style.transform = 'scale(1)', 100);
+
+                    if (winClickCount === 5) {
+                        alert("You found a secret! Keep exploring Win's digital world!");
+                        // Could add a more visual effect here, e.g., change hero background temporarily
+                        const heroSection = document.getElementById('hero');
+                        const originalBg = heroSection.style.background;
+                        heroSection.style.background = 'linear-gradient(45deg, #ff00cc, #333399)';
+                        setTimeout(() => heroSection.style.background = originalBg, 2000);
+                        winClickCount = 0; // Reset
+                    }
+                });
+            }
+
+            // 3. Footer Icon secret click
+            const footerIcon = document.getElementById('footer-secret-icon');
+            if (footerIcon) {
+                footerIcon.addEventListener('click', () => {
+                    alert("To infinity... and beyond! Thanks for visiting. ✨");
+                });
+            }
+
+        });
+    </script>
+</body>
+</html>

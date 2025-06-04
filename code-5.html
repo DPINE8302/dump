@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows XP-ish Interactive Deluxe</title>
+    <style>
+        /* XP-like Styles (same as before, with additions) */
+        :root {
+            --xp-blue: #0058ad;
+            --xp-blue-gradient-start: #0050a0;
+            --xp-blue-gradient-end: #0078d7;
+            --xp-green-start: #57ae00;
+            --xp-green-end: #79d800;
+            --xp-button-face: #ece9d8;
+            --xp-button-shadow: #aca899;
+            --xp-button-highlight: #ffffff;
+            --xp-window-border: #0050a0;
+            --xp-window-background: #f0f0f0;
+            --xp-font: 'Tahoma', sans-serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--xp-font);
+            user-select: none;
+        }
+
+        #desktop {
+            width: 100%;
+            height: 100%;
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/3/3d/Bliss_(location).jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .desktop-icon {
+            position: absolute;
+            width: 80px;
+            text-align: center;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px; /* Smaller font for icons */
+        }
+        .desktop-icon:hover {
+            background-color: rgba(0, 88, 173, 0.3);
+            border: 1px solid rgba(0, 88, 173, 0.5);
+        }
+        .desktop-icon img {
+            width: 48px;
+            height: 48px;
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+        #myComputerIcon { top: 20px; left: 20px; }
+        #notepadIcon { top: 100px; left: 20px; } /* Adjusted spacing */
+        #aboutIcon { top: 180px; left: 20px; }
+        #paintIcon { top: 20px; left: 110px; }
+        #videoPlayerIcon { top: 100px; left: 110px; }
+        #calculatorIcon { top: 180px; left: 110px; }
+
+
+        #taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to bottom, var(--xp-blue-gradient-start), var(--xp-blue-gradient-end));
+            border-top: 1px solid #003c77;
+            display: flex;
+            align-items: center;
+            padding: 0 5px;
+            box-sizing: border-box;
+            z-index: 10000;
+        }
+
+        #startButton {
+            background: linear-gradient(to bottom, var(--xp-green-start), var(--xp-green-end));
+            border: 1px solid #468e00;
+            border-radius: 3px;
+            color: white;
+            font-weight: bold;
+            padding: 2px 10px 2px 25px;
+            cursor: pointer;
+            font-size: 14px;
+            text-shadow: 1px 1px 1px #3b7400;
+            position: relative;
+            margin-right: 10px;
+        }
+        #startButton::before {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%23F35325" d="M0 0h48v48H0z"/><path fill="%2381BC06" d="M52 0h48v48H52z"/><path fill="%2305A6F0" d="M0 52h48v48H0z"/><path fill="%23FFBA08" d="M52 52h48v48H52z"/></svg>');
+            background-size: contain;
+        }
+
+        #taskbarApps {
+            flex-grow: 1;
+            display: flex;
+            height: 100%;
+        }
+        .taskbar-button {
+            background-color: var(--xp-blue);
+            border: 1px outset var(--xp-button-face);
+            color: white;
+            padding: 0 10px;
+            margin: 2px 2px 0 2px;
+            border-radius: 3px 3px 0 0;
+            font-size: 12px;
+            cursor: pointer;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 26px;
+        }
+        .taskbar-button.active {
+            background-color: #004080;
+            border-style: inset;
+        }
+
+        #systemTray {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 5px;
+            background-color: #0072c6;
+            border-left: 1px solid #0050a0;
+        }
+        #clock { color: white; font-size: 12px; padding: 0 5px; }
+
+        #startMenu {
+            position: fixed;
+            bottom: 30px;
+            left: 0;
+            width: 250px;
+            background: linear-gradient(to right, var(--xp-blue-gradient-start) 20%, var(--xp-blue-gradient-end) 100%);
+            border: 1px solid var(--xp-window-border);
+            border-bottom: none;
+            border-top-right-radius: 5px;
+            box-shadow: 3px -3px 5px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 9999;
+            color: white;
+        }
+        .start-menu-header {
+            background-color: var(--xp-blue-gradient-start);
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #003c77;
+        }
+        .start-menu-header img {
+            width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; background-color: white;
+        }
+        .start-menu-user { font-weight: bold; font-size: 16px; }
+        .start-menu-section { padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .start-menu-section:last-child { border-bottom: none; }
+        .start-menu-item {
+            padding: 8px 15px 8px 35px; /* Increased padding for icon */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            position: relative;
+        }
+        .start-menu-item:hover { background-color: rgba(0, 120, 215, 0.7); }
+        .start-menu-item img.app-icon { /* Specific class for app icons in start menu */
+            width: 20px; height: 20px;
+            position: absolute;
+            left: 8px; top: 50%;
+            transform: translateY(-50%);
+        }
+        .start-menu-separator { height: 1px; background-color: rgba(255,255,255,0.2); margin: 5px 0; }
+        .start-menu-footer {
+            background-color: var(--xp-blue-gradient-start);
+            padding: 5px;
+            text-align: right;
+            border-top: 1px solid #003c77;
+        }
+        .start-menu-footer button {
+            background: none; border: none; color: white; cursor: pointer; padding: 5px 10px; font-size: 12px;
+        }
+        .start-menu-footer button:hover { background-color: rgba(0, 120, 215, 0.7); border-radius: 3px; }
+
+        .window {
+            position: absolute;
+            background-color: var(--xp-window-background);
+            border: 1px solid var(--xp-window-border);
+            box-shadow: 3px 3px 5px rgba(0,0,0,0.3);
+            border-radius: 5px 5px 0 0;
+            display: none;
+            min-width: 250px;
+            min-height: 150px;
+            overflow: hidden; /* Important for content not to spill during resize */
+        }
+        .window-titlebar {
+            background: linear-gradient(to bottom, var(--xp-blue-gradient-end), var(--xp-blue-gradient-start));
+            color: white;
+            padding: 3px 8px;
+            font-weight: bold;
+            cursor: move;
+            height: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+        .window-titlebar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1; }
+        .window-controls button {
+            background-color: var(--xp-button-face);
+            border: 1px solid var(--xp-button-shadow);
+            color: black;
+            font-family: 'Webdings', 'Wingdings', sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            width: 20px;
+            height: 18px;
+            padding: 0;
+            margin-left: 2px;
+            cursor: pointer;
+            line-height: 16px;
+        }
+        .window-controls button:active { border-style: inset; }
+        .window-content {
+            padding: 10px;
+            height: calc(100% - 28px - 20px); /* titlebar - padding. Adjusted by JS for specific apps */
+            overflow: auto;
+            background-color: white;
+            box-sizing: border-box;
+        }
+        .window-content textarea {
+            width: 100%; height: 100%; box-sizing: border-box; border: 1px solid #ccc; resize: none;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        /* Specific App Styles */
+        /* Paint App */
+        #paintWindow .window-content { padding: 0; display: flex; flex-direction: column; height: calc(100% - 28px); }
+        .paint-toolbar {
+            background-color: var(--xp-button-face);
+            padding: 5px;
+            border-bottom: 1px solid var(--xp-button-shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0; /* Toolbar should not shrink */
+        }
+        .paint-toolbar label { font-size: 12px; }
+        .paint-toolbar input[type="color"], .paint-toolbar input[type="range"], .paint-toolbar button {
+            height: 22px;
+            border: 1px solid var(--xp-button-shadow);
+        }
+        .paint-toolbar button { background-color: var(--xp-button-face); padding: 0 8px; cursor: pointer; }
+        .paint-toolbar button:active { border-style: inset; }
+        #paintCanvas {
+            cursor: crosshair;
+            background-color: white;
+            flex-grow: 1; /* Canvas takes remaining space */
+            display: block; /* Removes any extra space below it */
+        }
+
+        /* Video Player App */
+        #videoPlayerWindow .window-content { display: flex; flex-direction: column; gap: 10px; }
+        #youtubeUrlInput { width: calc(100% - 6px); padding: 3px; border: 1px solid var(--xp-button-shadow); }
+        #playYoutubeButton {
+            padding: 3px 10px; background-color: var(--xp-button-face); border: 1px solid var(--xp-button-shadow);
+            cursor: pointer; align-self: flex-start;
+        }
+        #playYoutubeButton:active { border-style: inset; }
+        #youtubeEmbedContainer {
+            width: 100%;
+            flex-grow: 1; /* Takes remaining space */
+            background-color: #333; /* Placeholder bg */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #youtubeEmbedContainer iframe { border: none; width: 100%; height: 100%; }
+
+        /* Calculator App */
+        #calculatorWindow { min-width: 220px; min-height: 300px; }
+        #calculatorWindow .window-content { padding: 5px; display: flex; flex-direction: column; height: calc(100% - 28px); }
+        .calc-display {
+            background-color: #e0e0e0;
+            border: 1px inset var(--xp-button-shadow);
+            padding: 5px 10px;
+            text-align: right;
+            font-size: 20px;
+            font-family: 'Consolas', monospace;
+            margin-bottom: 5px;
+            height: 30px; /* Fixed height */
+            line-height: 30px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 3px;
+            flex-grow: 1;
+        }
+        .calc-buttons button {
+            background-color: var(--xp-button-face);
+            border: 1px outset var(--xp-button-shadow);
+            font-size: 14px;
+            padding: 0; /* Let grid handle size */
+            cursor: pointer;
+            min-height: 30px; /* Minimum button height */
+        }
+        .calc-buttons button:active { border-style: inset; background-color: #d4d0c8; }
+        .calc-buttons .operator { background-color: #d4d0c8; }
+        .calc-buttons .equals { background-color: var(--xp-blue); color: white; }
+        .calc-buttons .clear { background-color: #f0a0a0; }
+        .calc-buttons .span-two { grid-column: span 2; }
+
+
+        /* Icons (simple placeholders or from previous) */
+        .icon-my-computer { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234A90E2"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10zm-2-7h-3v2h3v-2zm-5 0H9v2h4v-2zM6 6h2v1H6V6z"/></svg>'); background-size: contain; }
+        .icon-notepad { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACZUlEQVR4Ae1XA7bkIBDcbDvb2d7OdnbWszuQBCuQhMARCCSQQALJPhECn4F3d9ZkC7fSPqGZ3fXYX9PbJkP+VQow/PsG/57AL+BzQx+dAYhNXY7Y62rADW15ARBNUVR4eHgsDxNfHhwfHo7h4WGzP4CBgcH6fHx8PA0NDYn8+voaX19fL/MEAPL5vL6+vj2YnJxMS0tLbJbV1VWVlZWJzs7OxAFoaGgQj8fj7OzM6G8AcDgcDAYDxWJxfX09lJSUkE6nMzY2ZPcBAFVVKSkpDAwMGE0ABwcHtbW1yOVyKisrAwBJSUlEIhFzc3MBAL6+vmRzdpfV1dUVf39/LMsyOztLURRVVVWJRCI0Gr2yANTr9aysLBRFYY0nCALm5uYYDAYAlJaWEo/HLQBKpVJJSUmMx+OOjo5kUwDQarX09vayevqrFAPgOA6macLhcNi6uqoCuLi4QCqVMjIyYjabmZubo6CgQDKZBAAXFxcxFAoFAgGZTObk5IRkMkkwGLS0tHQsgNbWVkZHR5FIFYfDcXFxQXFxMYVCYWZmZhkxADk5ORgMhlqtJpvN2tvbi9VqZeWBeHiUb7VaCYVCotHokZERs9mMMQCKohKLxWSzWdzc3NDY2EhcXJzZARwOh62srEhkMpmbmxscHBxPnjA+Po7L5SIcDlNTU3NxcYHjOCoqqr/g+vo6vb29uFwuAHBxcUFmZuZiAQBCobCwsJDJZEQiEcVi0dvbi1Kp9PcBAAgEAqFQyMXFBQD09vbS2NiIVqsFAA4ODkQiEUNDQzQaDWdnZ2KxGF9fXy0LAPgDS6Jg2t+0D7QAAAAASUVORK5CYII='); background-size: contain; }
+        .icon-about { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFD700"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'); background-size: contain; }
+        .icon-folder { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFC107"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>'); background-size: contain; }
+        .icon-settings { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23607D8B"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>'); background-size: contain;}
+        /* New App Icons */
+        .icon-paint { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF9800"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'); background-size: contain;}
+        .icon-video { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23E53935"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'); background-size: contain;}
+        .icon-calculator { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234CAF50"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>'); background-size: contain;}
+
+    </style>
+</head>
+<body>
+
+    <div id="desktop">
+        <!-- Desktop Icons -->
+        <div class="desktop-icon" id="myComputerIcon" data-window-id="myComputerWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='a' x1='29.76' x2='29.76' y1='6.89' y2='55.62' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%2369a1f7'/><stop offset='1' stop-color='%232465e0'/></linearGradient><linearGradient id='b' x1='32' x2='32' y1='20.05' y2='45.02' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23f0f0f0'/><stop offset='1' stop-color='%23d4d4d4'/></linearGradient></defs><rect width='49.19' height='38.07' x='7.4' y='12.96' fill='%233d7ef5' rx='3.12' ry='3.12'/><path fill='%232155c6' d='M55.08 13.25a2.81 2.81 0 012.51 2.81v31.86a2.81 2.81 0 01-2.51 2.81H10.42a2.81 2.81 0 01-2.5-2.81V16.06a2.81 2.81 0 012.5-2.81h44.66m0-1.5H10.42c-2.28 0-4 1.58-4 3.56v31.86c0 1.98 1.72 3.56 4 3.56h44.66c2.28 0 4-1.58 4-3.56V15.31c0-1.98-1.72-3.56-4-3.56z'/><rect width='46.47' height='35.37' x='8.76' y='14.31' fill='url(%23a)' rx='1.56' ry='1.56'/><path fill='%23fff' d='M11.65 46.66a.75.75 0 000 1.5h10.87a.75.75 0 000-1.5zm16.87 0a.75.75 0 000 1.5H40.4a.75.75 0 000-1.5zm-9.04-2.88a2.06 2.06 0 102.06 2.07 2.07 2.07 0 00-2.06-2.07zm9.04 0a2.06 2.06 0 102.06 2.07 2.07 2.07 0 00-2.06-2.07z'/><path d='M49.95 20H14.05a2 2 0 00-2 2v19a2 2 0 002 2h35.9a2 2 0 002-2V22a2 2 0 00-2-2z' fill='url(%23b)'/><path d='M17.4 26.12h4.58a.75.75 0 000-1.5H17.4a.75.75 0 000 1.5zm0 4.5h11.7a.75.75 0 000-1.5H17.4a.75.75 0 000 1.5zm0 4.5h8.78a.75.75 0 000-1.5h-8.78a.75.75 0 000 1.5z' fill='%23555'/></svg>" alt="My Computer">
+            My Computer
+        </div>
+        <div class="desktop-icon" id="notepadIcon" data-window-id="notepadWindow">
+             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACZUlEQVR4Ae1XA7bkIBDcbDvb2d7OdnbWszuQBCuQhMARCCSQQALJPhECn4F3d9ZkC7fSPqGZ3fXYX9PbJkP+VQow/PsG/57AL+BzQx+dAYhNXY7Y62rADW15ARBNUVR4eHgsDxNfHhwfHo7h4WGzP4CBgcH6fHx8PA0NDYn8+voaX19fL/MEAPL5vL6+vj2YnJxMS0tLbJbV1VWVlZWJzs7OxAFoaGgQj8fj7OzM6G8AcDgcDAYDxWJxfX09lJSUkE6nMzY2ZPcBAFVVKSkpDAwMGE0ABwcHtbW1yOVyKisrAwBJSUlEIhFzc3MBAL6+vmRzdpfV1dUVf39/LMsyOztLURRVVVWJRCI0Gr2yANTr9aysLBRFYY0nCALm5uYYDAYAlJaWEo/HLQBKpVJJSUmMx+OOjo5kUwDQarX09vayevqrFAPgOA6macLhcNi6uqoCuLi4QCqVMjIyYjabmZubo6CgQDKZBAAXFxcxFAoFAgGZTObk5IRkMkkwGLS0tHQsgNbWVkZHR5FIFYfDcXFxQXFxMYVCYWZmZhkxADk5ORgMhlqtJpvN2tvbi9VqZeWBeHiUb7VaCYVCotHokZERs9mMMQCKohKLxWSzWdzc3NDY2EhcXJzZARwOh62srEhkMpmbmxscHBxPnjA+Po7L5SIcDlNTU3NxcYHjOCoqqr/g+vo6vb29uFwuAHBxcUFmZuZiAQBCobCwsJDJZEQiEcVi0dvbi1Kp9PcBAAgEAqFQyMXFBQD09vbS2NiIVqsFAA4ODkQiEUNDQzQaDWdnZ2KxGF9fXy0LAPgDS6Jg2t+0D7QAAAAASUVORK5CYII=" alt="Notepad">
+            Notepad
+        </div>
+         <div class="desktop-icon" id="aboutIcon" data-window-id="aboutWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%230078D7'><path d='M32 2C15.43 2 2 15.43 2 32s13.43 30 30 30 30-13.43 30-30S48.57 2 32 2zm0 54C18.75 56 8 45.25 8 32S18.75 8 32 8s24 10.75 24 24-10.75 24-24 24z'/><path fill='%23FFF' d='M30 18h4v4h-4zm0 8h4v18h-4z'/></svg>" alt="About">
+            About XP-ish
+        </div>
+        <div class="desktop-icon" id="paintIcon" data-window-id="paintWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%23FF9800'><path d='M51.4 12.6c-1.4-1.4-3.6-1.4-5 0L26.1 32.9l-10-10L3 36.2l13.1 13.1 28.3-28.3c1.4-1.4 1.4-3.6 0-5L51.4 12.6zM20.6 43.8L10.5 33.6l3.5-3.5 10.1 10.1-3.5 3.6zm25.8-25.8L33.3 31.1l-3.5-3.5L42.9 14.5l3.5 3.5z'/><path d='M14.1 53.9L3 42.7l4.2-4.2L10 41l-3.5 3.5 9.9 9.9 3.5-3.5 2.5 2.5-8.3 8.5z'/><path d='M54.5 6.1c-2.3-2.3-6.1-2.3-8.5 0l-4.2 4.2 8.5 8.5 4.2-4.2c2.3-2.4 2.3-6.2 0-8.5z'/></svg>" alt="Paint">
+            Paint
+        </div>
+        <div class="desktop-icon" id="videoPlayerIcon" data-window-id="videoPlayerWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%23E53935'><path d='M32 2C15.4 2 2 15.4 2 32s13.4 30 30 30 30-13.4 30-30S48.6 2 32 2zm0 56C17.6 58 6 46.4 6 32S17.6 6 32 6s26 11.6 26 26-11.6 26-26 26z'/><path fill='%23FFF' d='M26 45V19l18 13-18 13z'/></svg>" alt="Video Player">
+            Video Player
+        </div>
+        <div class="desktop-icon" id="calculatorIcon" data-window-id="calculatorWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%234CAF50'><path d='M50 4H14C8.5 4 4 8.5 4 14v36c0 5.5 4.5 10 10 10h36c5.5 0 10-4.5 10-10V14c0-5.5-4.5-10-10-10zm6 46c0 3.3-2.7 6-6 6H14c-3.3 0-6-2.7-6-6V14c0-3.3 2.7-6 6-6h36c3.3 0 6 2.7 6 6v36z'/><path fill='%23FFF' d='M20 44h6v6h-6zm10 0h6v6h-6zm10 0h6v6h-6zm-20-10h6v6h-6zm10 0h6v6h-6zm10 0h6v6h-6zm-20-10h6v6h-6zm10 0h6v6h-6zm10 0h6v6h-6zm-20-10h16v6H20z'/></svg>" alt="Calculator">
+            Calculator
+        </div>
+
+
+        <!-- Windows -->
+        <div class="window" id="myComputerWindow" data-title="My Computer">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">My Computer</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <p><strong>Files Stored on This Computer</strong></p>
+                <ul style="list-style-type: none; padding-left:0;">
+                    <li><span class="icon-folder" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:5px;"></span> Hard Disk Drive (C:)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="window" id="notepadWindow" data-title="Untitled - Notepad" style="width:400px; height:300px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">Untitled - Notepad</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <textarea placeholder="Type something here..."></textarea>
+            </div>
+        </div>
+        
+        <div class="window" id="aboutWindow" data-title="About XP-ish" style="width:350px; height:250px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">About XP-ish</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <h3>XP-ish Interactive Deluxe</h3>
+                <p>A creative simulation of Windows XP in a single HTML file.</p>
+                <p>Features:</p>
+                <ul>
+                    <li>Draggable windows</li>
+                    <li>Min, Max, Close</li>
+                    <li>Start Menu (basic)</li>
+                    <li>Paint, Video Player, Calculator</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Paint Window -->
+        <div class="window" id="paintWindow" data-title="Untitled - Paint" style="width:500px; height:400px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">Untitled - Paint</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="paint-toolbar">
+                    <label for="paintColor">Color:</label>
+                    <input type="color" id="paintColor" value="#000000">
+                    <label for="paintBrushSize">Size:</label>
+                    <input type="range" id="paintBrushSize" min="1" max="50" value="5">
+                    <button id="paintClearButton">Clear</button>
+                </div>
+                <canvas id="paintCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Video Player Window -->
+        <div class="window" id="videoPlayerWindow" data-title="Video Player" style="width:580px; height:450px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">Video Player</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <input type="text" id="youtubeUrlInput" placeholder="Enter YouTube Video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)">
+                <button id="playYoutubeButton">Play</button>
+                <div id="youtubeEmbedContainer">
+                    <p style="color: #ccc; text-align:center;">Enter a YouTube URL above and press Play.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calculator Window -->
+        <div class="window" id="calculatorWindow" data-title="Calculator" style="width:240px; height:320px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">Calculator</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <div id="calculatorDisplay" class="calc-display">0</div>
+                <div class="calc-buttons">
+                    <button data-action="clear" class="clear span-two">C</button>
+                    <button data-action="backspace">&larr;</button>
+                    <button data-action="operator" data-value="/">/</button>
+
+                    <button data-action="number" data-value="7">7</button>
+                    <button data-action="number" data-value="8">8</button>
+                    <button data-action="number" data-value="9">9</button>
+                    <button data-action="operator" data-value="*">*</button>
+
+                    <button data-action="number" data-value="4">4</button>
+                    <button data-action="number" data-value="5">5</button>
+                    <button data-action="number" data-value="6">6</button>
+                    <button data-action="operator" data-value="-">-</button>
+
+                    <button data-action="number" data-value="1">1</button>
+                    <button data-action="number" data-value="2">2</button>
+                    <button data-action="number" data-value="3">3</button>
+                    <button data-action="operator" data-value="+">+</button>
+
+                    <button data-action="number" data-value="0" class="span-two">0</button>
+                    <button data-action="decimal" data-value=".">.</button>
+                    <button data-action="equals" class="equals">=</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="taskbar">
+        <button id="startButton">start</button>
+        <div id="taskbarApps"></div>
+        <div id="systemTray">
+            <div id="clock"></div>
+        </div>
+    </div>
+
+    <div id="startMenu">
+        <div class="start-menu-header">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='%23DDD'/><path d='M32 10c-6.63 0-12 5.37-12 12s5.37 12 12 12 12-5.37 12-12-5.37-12-12-12zm0 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/><path d='M16 48c0-8.84 7.16-16 16-16s16 7.16 16 16z'/></svg>" alt="User Avatar">
+            <span class="start-menu-user">XP User</span>
+        </div>
+        <div class="start-menu-section">
+            <div class="start-menu-item" data-window-id="paintWindow">
+                <img class="app-icon icon-paint"> Paint
+            </div>
+            <div class="start-menu-item" data-window-id="videoPlayerWindow">
+                <img class="app-icon icon-video"> Video Player
+            </div>
+             <div class="start-menu-item" data-window-id="calculatorWindow">
+                <img class="app-icon icon-calculator"> Calculator
+            </div>
+            <div class="start-menu-item" data-window-id="notepadWindow">
+                <img class="app-icon icon-notepad"> Notepad
+            </div>
+        </div>
+        <div class="start-menu-separator"></div>
+        <div class="start-menu-section">
+             <div class="start-menu-item" data-window-id="myComputerWindow">
+                <img class="app-icon icon-my-computer"> My Computer
+            </div>
+            <div class="start-menu-item" data-window-id="aboutWindow">
+                <img class="app-icon icon-about"> About XP-ish
+            </div>
+        </div>
+         <div class="start-menu-separator"></div>
+        <div class="start-menu-footer">
+            <button id="logOffButton">Log Off</button>
+            <button id="shutDownButton">Turn Off Computer</button>
+        </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const desktop = document.getElementById('desktop');
+        const taskbar = document.getElementById('taskbar');
+        const startButton = document.getElementById('startButton');
+        const startMenu = document.getElementById('startMenu');
+        const clockElement = document.getElementById('clock');
+        const allWindows = document.querySelectorAll('.window'); // Renamed for clarity
+        const desktopIcons = document.querySelectorAll('.desktop-icon');
+        const taskbarAppsContainer = document.getElementById('taskbarApps');
+
+        let highestZIndex = 100;
+        let activeWindow = null;
+        const openWindows = {}; 
+
+        // --- Clock ---
+        function updateClock() {
+            const now = new Date();
+            clockElement.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+        updateClock(); setInterval(updateClock, 1000);
+
+        // --- Start Menu ---
+        startButton.addEventListener('click', (e) => { e.stopPropagation(); startMenu.style.display = startMenu.style.display === 'block' ? 'none' : 'block'; });
+        document.addEventListener('click', (e) => { if (!startMenu.contains(e.target) && e.target !== startButton) startMenu.style.display = 'none'; });
+        document.getElementById('logOffButton').addEventListener('click', () => alert('Logging off... (not really!)'));
+        document.getElementById('shutDownButton').addEventListener('click', () => alert('Shutting down... (not really!)'));
+
+        // --- Window Management (Core Logic) ---
+        function bringToFront(winEl) {
+            highestZIndex++;
+            winEl.style.zIndex = highestZIndex;
+            if (activeWindow && openWindows[activeWindow.id]) openWindows[activeWindow.id].taskbarButton?.classList.remove('active');
+            activeWindow = winEl;
+            if (openWindows[activeWindow.id] && openWindows[activeWindow.id].taskbarButton) openWindows[activeWindow.id].taskbarButton.classList.add('active');
+        }
+        
+        function openWindow(windowId, event) {
+            if (event) event.stopPropagation();
+            const windowElement = document.getElementById(windowId);
+            if (!windowElement) return;
+
+            const firstOpen = (windowElement.style.display === 'none' || windowElement.style.display === '');
+            windowElement.style.display = 'block';
+            
+            if (firstOpen && (!windowElement.style.top || !windowElement.style.left)) {
+                // Position new windows somewhat centrally, slightly offset for multiple new windows
+                const offset = Object.keys(openWindows).length * 20;
+                windowElement.style.top = `${50 + offset}px`;
+                windowElement.style.left = `${150 + offset}px`;
+            }
+            
+            if (!openWindows[windowId]) {
+                 createTaskbarButton(windowElement);
+                 // Initialize app-specific logic if it's the first time opening
+                 if (windowId === 'paintWindow' && !openWindows[windowId].initialized) initPaintApp(windowElement);
+                 if (windowId === 'videoPlayerWindow' && !openWindows[windowId].initialized) initVideoPlayerApp(windowElement);
+                 if (windowId === 'calculatorWindow' && !openWindows[windowId].initialized) initCalculatorApp(windowElement);
+                 if (openWindows[windowId]) openWindows[windowId].initialized = true;
+            }
+            
+            bringToFront(windowElement);
+            if (openWindows[windowId]) {
+                openWindows[windowId].taskbarButton?.classList.add('active');
+                openWindows[windowId].minimized = false;
+            }
+            startMenu.style.display = 'none';
+        }
+
+        function createTaskbarButton(winEl) {
+            const btn = document.createElement('button');
+            btn.classList.add('taskbar-button');
+            btn.textContent = winEl.dataset.title || winEl.id;
+            btn.dataset.windowId = winEl.id;
+            
+            btn.addEventListener('click', () => {
+                const win = document.getElementById(btn.dataset.windowId);
+                if (win.style.display === 'none' || (openWindows[win.id] && openWindows[win.id].minimized)) {
+                    win.style.display = 'block';
+                    if(openWindows[win.id]) openWindows[win.id].minimized = false;
+                    bringToFront(win);
+                } else if (win === activeWindow) {
+                    minimizeWindow(win);
+                } else {
+                    bringToFront(win);
+                }
+            });
+            
+            taskbarAppsContainer.appendChild(btn);
+            openWindows[winEl.id] = { element: winEl, taskbarButton: btn, minimized: false, initialized: false };
+        }
+
+        function removeTaskbarButton(windowId) {
+            if (openWindows[windowId] && openWindows[windowId].taskbarButton) {
+                openWindows[windowId].taskbarButton.remove();
+                // Don't delete openWindows[windowId] entirely, just mark as uninitialized if needed or handle state
+                // For now, just removing button. If app state needs reset, do it here.
+            }
+             // If we want to fully reset the app and allow re-initialization:
+            if (openWindows[windowId]) {
+                delete openWindows[windowId];
+            }
+        }
+
+        function minimizeWindow(winEl) {
+            winEl.style.display = 'none';
+            if (openWindows[winEl.id]) {
+                openWindows[winEl.id].minimized = true;
+                openWindows[winEl.id].taskbarButton?.classList.remove('active');
+            }
+            let nextActive = null; let maxZ = -1;
+            allWindows.forEach(w => {
+                if (w.style.display !== 'none' && w !== winEl) {
+                    const z = parseInt(w.style.zIndex || 0);
+                    if (z > maxZ) { maxZ = z; nextActive = w; }
+                }
+            });
+            activeWindow = nextActive; // Set this before calling bringToFront
+            if (nextActive) bringToFront(nextActive); else activeWindow = null;
+        }
+
+        allWindows.forEach(win => {
+            const titlebar = win.querySelector('.window-titlebar');
+            const closeBtn = win.querySelector('.close');
+            const minBtn = win.querySelector('.minimize');
+            const maxBtn = win.querySelector('.maximize');
+            let isDragging = false, offsetX, offsetY;
+
+            win.dataset.originalWidth = win.style.width; win.dataset.originalHeight = win.style.height;
+            win.dataset.originalTop = win.style.top; win.dataset.originalLeft = win.style.left;
+            win.dataset.isMaximized = 'false';
+
+            titlebar.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.window-controls button')) return;
+                isDragging = true;
+                offsetX = e.clientX - win.offsetLeft; offsetY = e.clientY - win.offsetTop;
+                win.style.cursor = 'grabbing'; bringToFront(win);
+            });
+            win.addEventListener('mousedown', () => bringToFront(win));
+
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); win.style.display = 'none'; removeTaskbarButton(win.id);
+                if (activeWindow === win) activeWindow = null;
+                // Specific cleanup for apps if needed
+                if (win.id === 'videoPlayerWindow') {
+                    const embedContainer = win.querySelector('#youtubeEmbedContainer');
+                    embedContainer.innerHTML = '<p style="color: #ccc; text-align:center;">Enter a YouTube URL above and press Play.</p>'; // Reset player
+                }
+            });
+            minBtn.addEventListener('click', (e) => { e.stopPropagation(); minimizeWindow(win); });
+            
+            maxBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const taskbarHeight = taskbar.offsetHeight;
+                const winContent = win.querySelector('.window-content');
+
+                if (win.dataset.isMaximized === 'false') {
+                    win.dataset.originalWidth = win.style.width || win.offsetWidth + 'px';
+                    win.dataset.originalHeight = win.style.height || win.offsetHeight + 'px';
+                    win.dataset.originalTop = win.style.top || win.offsetTop + 'px';
+                    win.dataset.originalLeft = win.style.left || win.offsetLeft + 'px';
+
+                    win.style.width = '100%';
+                    win.style.height = `calc(100% - ${taskbarHeight}px)`;
+                    win.style.top = '0'; win.style.left = '0';
+                    win.dataset.isMaximized = 'true'; maxBtn.setAttribute('data-char', '2');
+                } else {
+                    win.style.width = win.dataset.originalWidth; win.style.height = win.dataset.originalHeight;
+                    win.style.top = win.dataset.originalTop; win.style.left = win.dataset.originalLeft;
+                    win.dataset.isMaximized = 'false'; maxBtn.setAttribute('data-char', '1');
+                }
+                bringToFront(win);
+                // Trigger resize for apps
+                if (win.id === 'paintWindow') resizePaintCanvas(win);
+                // Video player iframe usually resizes well with CSS
+            });
+
+            win.querySelectorAll('.window-controls button').forEach(btn => {
+                 if (btn.dataset.char === 'r') btn.textContent = 'r';
+                 else if (btn.dataset.char === '0') btn.textContent = '0';
+                 else if (btn.dataset.char === '1') btn.textContent = '1';
+                 else if (btn.dataset.char === '2') btn.textContent = '2';
+            });
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!activeWindow || !activeWindow.querySelector('.window-titlebar').style.cursor.includes('grabbing')) return;
+            const win = activeWindow;
+            // Need to re-fetch offsetX, offsetY if dragging didn't start on this activeWindow's titlebar
+            // For simplicity, this relies on titlebar mousedown setting isDragging.
+            // A more robust way would be to check if isDragging is true for the current activeWindow.
+            // This part can be tricky if dragging state is not managed per window.
+            // The original script had isDragging as a global for each window closure, which is better.
+            // Let's assume isDragging is correctly set by the mousedown on *this* window's titlebar.
+            // To fix, we'd need to access the specific `isDragging` state of `activeWindow`.
+            // For now, the existing structure of iterating allWindows and setting up dragging for each separately should handle this.
+            // The issue might be if another window becomes active WHILE dragging - this is not typical OS behavior.
+
+            // The following relies on `isDragging` being tied to the specific window instance via closure,
+            // which is how the original `allWindows.forEach(win => { ... let isDragging ...});` works.
+            // The `activeWindow` check in mousemove is more of a guard.
+            allWindows.forEach(winInstance => {
+                // This is a bit inefficient but ensures we get the correct closure variables.
+                // A better way is to have drag state on the window object itself or a global drag target.
+                const titlebar = winInstance.querySelector('.window-titlebar');
+                if (titlebar.style.cursor === 'grabbing') { // Check if this specific window is being dragged
+                    // Re-calculate offsetX, offsetY if not already set in this event flow.
+                    // This would require storing offsetX/Y on mousedown more globally or on the element.
+                    // For now, we assume offsetX/Y are from the correct window's mousedown closure.
+                    // Re-evaluating the drag logic:
+                    // Each window has its own `isDragging`, `offsetX`, `offsetY` in its closure.
+                    // The `document.addEventListener('mousemove', ...)` is global.
+                    // We need to iterate or find the window that `isDragging = true`.
+
+                    // The current structure implies that `isDragging` is checked inside each window's mousemove handler
+                    // (if we were to move the listener inside the loop).
+                    // With a single global listener, we need a way to know WHICH window is dragging.
+                    // Solution: when mousedown sets isDragging=true, also set a global `draggedWindow = win;`
+                }
+            });
+            // The original code was actually fine because `isDragging` was in the closure of titlebar's mousemove.
+            // Let's revert to that model for simplicity:
+        });
+        // The mousemove and mouseup should be global, but act on the window whose titlebar initiated drag.
+        let draggedWindow = null;
+        let dragOffsetX, dragOffsetY;
+
+        document.addEventListener('mousemove', (e) => {
+            if (!draggedWindow) return;
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY;
+
+            const desktopRect = desktop.getBoundingClientRect();
+            const taskbarHeight = taskbar.offsetHeight;
+            newX = Math.max(0, Math.min(newX, desktopRect.width - draggedWindow.offsetWidth));
+            newY = Math.max(0, Math.min(newY, desktopRect.height - draggedWindow.offsetHeight - taskbarHeight));
+            
+            draggedWindow.style.left = `${newX}px`;
+            draggedWindow.style.top = `${newY}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (draggedWindow) {
+                draggedWindow.querySelector('.window-titlebar').style.cursor = 'move';
+                draggedWindow = null;
+            }
+        });
+        
+        allWindows.forEach(win => { // Re-iterate to attach specific drag start
+            const titlebar = win.querySelector('.window-titlebar');
+            titlebar.addEventListener('mousedown', (e) => {
+                 if (e.target.closest('.window-controls button')) return;
+                 draggedWindow = win; // Set the globally dragged window
+                 dragOffsetX = e.clientX - win.offsetLeft;
+                 dragOffsetY = e.clientY - win.offsetTop;
+                 win.style.cursor = 'grabbing'; // Visual cue on the window itself
+                 titlebar.style.cursor = 'grabbing'; // On the titlebar
+                 bringToFront(win);
+            });
+        });
+
+
+        // --- Desktop Icons & Start Menu Items ---
+        desktopIcons.forEach(icon => {
+            icon.addEventListener('dblclick', () => openWindow(icon.dataset.windowId));
+            icon.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                desktopIcons.forEach(i => i.style.backgroundColor = 'transparent');
+                icon.style.backgroundColor = 'rgba(0, 88, 173, 0.5)';
+            });
+        });
+        desktop.addEventListener('click', () => { 
+            desktopIcons.forEach(i => i.style.backgroundColor = 'transparent');
+            startMenu.style.display = 'none';
+        });
+        document.querySelectorAll('.start-menu-item').forEach(item => {
+            const windowId = item.dataset.windowId;
+            if (windowId) item.addEventListener('click', (e) => openWindow(windowId, e));
+            else item.addEventListener('click', (e) => { 
+                e.stopPropagation(); alert(`'${item.textContent.trim()}' (dummy)`); startMenu.style.display = 'none';
+            });
+        });
+
+
+        // --- Paint App Logic ---
+        function initPaintApp(paintWindowElement) {
+            const canvas = paintWindowElement.querySelector('#paintCanvas');
+            const ctx = canvas.getContext('2d');
+            const colorPicker = paintWindowElement.querySelector('#paintColor');
+            const brushSizeSlider = paintWindowElement.querySelector('#paintBrushSize');
+            const clearButton = paintWindowElement.querySelector('#paintClearButton');
+            const toolbar = paintWindowElement.querySelector('.paint-toolbar');
+
+            let painting = false;
+            
+            function resizeCanvas() {
+                // Make canvas sharp on high DPI displays
+                const dpr = window.devicePixelRatio || 1;
+                // Set display size (css pixels).
+                const rect = canvas.getBoundingClientRect(); // Gets size from CSS (flex-grow)
+                canvas.style.width = rect.width + "px";
+                canvas.style.height = rect.height + "px";
+                // Set actual size in memory (scaled).
+                canvas.width = Math.floor(rect.width * dpr);
+                canvas.height = Math.floor(rect.height * dpr);
+                // Scale the context to ensure drawing operations draw at correct scale.
+                ctx.scale(dpr, dpr);
+                
+                // Re-apply settings after resize
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = colorPicker.value;
+                ctx.lineWidth = brushSizeSlider.value;
+            }
+
+            // Initial resize. Important to do this *after* window is visible and sized.
+            // Using a ResizeObserver is more robust for dynamic resizing.
+            const observer = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    if (entry.target === canvas.parentElement) { // Observe content area
+                        resizeCanvas();
+                        // If there was content, it would be lost. Could store and redraw.
+                    }
+                }
+            });
+            // Observe the canvas's direct parent (.window-content > canvas) or its container.
+            // The parent of canvas is .window-content.
+            observer.observe(canvas.parentElement); 
+            // Also explicitly call for initial setup
+            setTimeout(resizeCanvas, 0); // Timeout to allow layout engine to settle
+
+
+            function startPosition(e) { painting = true; draw(e); }
+            function finishedPosition() { painting = false; ctx.beginPath(); }
+            function draw(e) {
+                if (!painting) return;
+                const rect = canvas.getBoundingClientRect(); // Get current canvas position
+                // Adjust for devicePixelRatio because event coords are CSS pixels
+                const x = (e.clientX - rect.left);
+                const y = (e.clientY - rect.top);
+
+                ctx.lineWidth = brushSizeSlider.value;
+                ctx.strokeStyle = colorPicker.value;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+
+            canvas.addEventListener('mousedown', startPosition);
+            canvas.addEventListener('mouseup', finishedPosition);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseleave', finishedPosition); // Stop drawing if mouse leaves
+            
+            clearButton.addEventListener('click', () => {
+                ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio||1) , canvas.height / (window.devicePixelRatio||1));
+            });
+             // Store the observer on the window element to disconnect later if needed
+            paintWindowElement.dataset.resizeObserver = observer; 
+        }
+        // Attach this to the main resize logic
+        function resizePaintCanvas(paintWindowElement) {
+            const canvas = paintWindowElement.querySelector('#paintCanvas');
+            if (canvas && canvas.parentElement) {
+                 const ctx = canvas.getContext('2d');
+                 const colorPicker = paintWindowElement.querySelector('#paintColor');
+                 const brushSizeSlider = paintWindowElement.querySelector('#paintBrushSize');
+                 const dpr = window.devicePixelRatio || 1;
+                 const rect = canvas.getBoundingClientRect(); // Gets size from CSS (flex-grow)
+                 canvas.style.width = rect.width + "px";
+                 canvas.style.height = rect.height + "px";
+                 canvas.width = Math.floor(rect.width * dpr);
+                 canvas.height = Math.floor(rect.height * dpr);
+                 ctx.scale(dpr, dpr);
+                 ctx.lineCap = 'round';
+                 ctx.strokeStyle = colorPicker.value;
+                 ctx.lineWidth = brushSizeSlider.value;
+                 // NOTE: This simple resize clears the canvas. A real app would redraw content.
+                 ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            }
+        }
+
+
+        // --- Video Player App Logic ---
+        function initVideoPlayerApp(videoWindowElement) {
+            const urlInput = videoWindowElement.querySelector('#youtubeUrlInput');
+            const playButton = videoWindowElement.querySelector('#playYoutubeButton');
+            const embedContainer = videoWindowElement.querySelector('#youtubeEmbedContainer');
+
+            playButton.addEventListener('click', () => {
+                const url = urlInput.value.trim();
+                const videoId = getYoutubeVideoId(url);
+                if (videoId) {
+                    embedContainer.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                } else {
+                    embedContainer.innerHTML = '<p style="color: red; text-align:center;">Invalid YouTube URL. Please try again.</p>';
+                }
+            });
+
+            function getYoutubeVideoId(url) {
+                const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+                const match = url.match(regex);
+                return match ? match[1] : null;
+            }
+        }
+
+        // --- Calculator App Logic ---
+        function initCalculatorApp(calcWindowElement) {
+            const display = calcWindowElement.querySelector('#calculatorDisplay');
+            const buttons = calcWindowElement.querySelectorAll('.calc-buttons button');
+            let currentInput = '0';
+            let previousInput = '';
+            let operator = null;
+            let resultDisplayed = false;
+
+            function updateDisplay() {
+                display.textContent = currentInput || '0';
+            }
+
+            function calculate() {
+                if (!operator || previousInput === '') return parseFloat(currentInput);
+                const prev = parseFloat(previousInput);
+                const curr = parseFloat(currentInput);
+                if (isNaN(prev) || isNaN(curr)) return NaN;
+
+                let result;
+                switch (operator) {
+                    case '+': result = prev + curr; break;
+                    case '-': result = prev - curr; break;
+                    case '*': result = prev * curr; break;
+                    case '/': result = curr === 0 ? NaN : prev / curr; break; // Handle division by zero
+                    default: return curr;
+                }
+                return result;
+            }
+
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const action = button.dataset.action;
+                    const value = button.dataset.value;
+
+                    if (action === 'number') {
+                        if (currentInput === '0' || resultDisplayed) {
+                            currentInput = value;
+                            resultDisplayed = false;
+                        } else {
+                            currentInput += value;
+                        }
+                    } else if (action === 'decimal') {
+                        if (resultDisplayed) {
+                            currentInput = '0.';
+                            resultDisplayed = false;
+                        } else if (!currentInput.includes('.')) {
+                            currentInput += '.';
+                        }
+                    } else if (action === 'operator') {
+                        if (operator && previousInput !== '' && !resultDisplayed) {
+                            const result = calculate();
+                            currentInput = String(result);
+                            previousInput = String(result); // For chained operations
+                        } else {
+                            previousInput = currentInput;
+                        }
+                        operator = value;
+                        resultDisplayed = true; // Expecting next number
+                    } else if (action === 'equals') {
+                        if (operator && previousInput !== '') {
+                            const result = calculate();
+                            if (isNaN(result)) {
+                                currentInput = "Error";
+                            } else {
+                                currentInput = String(Math.round(result * 1e10) / 1e10); // Round to avoid long decimals
+                            }
+                            operator = null;
+                            previousInput = '';
+                            resultDisplayed = true;
+                        }
+                    } else if (action === 'clear') {
+                        currentInput = '0';
+                        previousInput = '';
+                        operator = null;
+                        resultDisplayed = false;
+                    } else if (action === 'backspace') {
+                        if (resultDisplayed) return; // Don't backspace on a result
+                        currentInput = currentInput.slice(0, -1);
+                        if (currentInput === '') currentInput = '0';
+                    }
+                    updateDisplay();
+                });
+            });
+            updateDisplay(); // Initial display
+        }
+
+    });
+</script>
+
+</body>
+</html>

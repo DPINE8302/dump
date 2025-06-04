@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Win's Portfolio - Netflix Style</title>
+    <script src="https://unpkg.com/scrollreveal"></script>
+    <style>
+        :root {
+            --netflix-red: #E50914;
+            --netflix-dark: #141414;
+            --netflix-gray: #808080;
+            --text-light: #f5f5f5;
+            --card-bg: #222;
+            --timeline-line-color: #444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: var(--netflix-dark); color: var(--text-light); line-height: 1.6; }
+        html { scroll-behavior: smooth; }
+        .container { width: 90%; max-width: 1200px; margin: 0 auto; }
+        h1, h2, h3, h4 { margin-bottom: 1rem; color: var(--text-light); }
+        h2 { font-size: 1.8rem; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.3rem; }
+        h4 { font-size: 1.4rem; font-weight: 500; margin-left: 5%; margin-bottom: 1rem; }
+        p { margin-bottom: 1rem; color: #ccc; }
+        a { color: var(--netflix-red); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        img { max-width: 100%; height: auto; display: block; }
+
+        #progress-bar { position: fixed; top: 0; left: 0; height: 5px; background-color: var(--netflix-red); width: 0%; z-index: 1000; transition: width 0.1s ease-out; }
+        #main-header { background-color: rgba(20, 20, 20, 0.9); padding: 1rem 0; position: fixed; width: 100%; top: 0; z-index: 999; transition: background-color 0.3s ease; }
+        #main-header .container { display: flex; justify-content: space-between; align-items: center; }
+        #logo { font-size: 2rem; font-weight: bold; color: var(--netflix-red); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0; }
+        #main-header nav ul { list-style: none; display: flex; }
+        #main-header nav ul li { margin-left: 20px; }
+        #main-header nav ul li a { color: var(--text-light); font-weight: 500; transition: color 0.3s ease; }
+        #main-header nav ul li a:hover, #main-header nav ul li a.active { color: var(--netflix-red); text-decoration: none; }
+        #main-header.scrolled { background-color: var(--netflix-dark); }
+
+        #hero-billboard { height: 85vh; min-height: 500px; background-size: cover; background-position: center center; display: flex; align-items: flex-end; padding-bottom: 5%; position: relative; color: var(--text-light); background-image: linear-gradient(to top, rgba(20, 20, 20, 1) 0%, rgba(20, 20, 20, 0) 60%), url('Pic6.webp'); }
+        #hero-billboard .overlay-content { max-width: 50%; padding-left: 5%; }
+        #hero-billboard h1 { font-size: 3.5rem; font-weight: bold; margin-bottom: 1rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+        #hero-billboard p { font-size: 1.2rem; margin-bottom: 1.5rem; color: #e0e0e0; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
+
+        .content-row { padding: 60px 0; }
+        main > section:first-of-type { padding-top: 100px; }
+        .content-row h2 { font-size: 1.5rem; margin-left: 5%; margin-bottom: 1rem; }
+        .row-content { display: flex; overflow-x: auto; overflow-y: hidden; padding: 1rem 0 1rem 5%; scrollbar-width: thin; scrollbar-color: var(--netflix-red) var(--card-bg); }
+        .row-content::-webkit-scrollbar { height: 8px; }
+        .row-content::-webkit-scrollbar-track { background: var(--card-bg); border-radius: 4px; }
+        .row-content::-webkit-scrollbar-thumb { background: var(--netflix-red); border-radius: 4px; }
+        .row-content::-webkit-scrollbar-thumb:hover { background: #b00710; }
+
+        .card { background-color: var(--card-bg); border-radius: 5px; margin-right: 15px; transition: transform 0.3s ease, box-shadow 0.3s ease; flex-shrink: 0; overflow: hidden; }
+        .card:hover { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.4); z-index: 10; }
+        .card:last-child { margin-right: 5%; }
+        .about-card { width: 90%; max-width: 800px; padding: 25px; background-color: #1c1c1c; margin-left: 5%; margin-right: 5%; }
+        .about-card h3 { color: var(--netflix-red); }
+
+        /* Creative Interests Card (replaces Skills) */
+        .interest-card {
+            width: 220px; /* Adjust as needed */
+            padding: 20px;
+            text-align: center;
+            background-color: #2a2a2a; /* Slightly lighter than card-bg */
+        }
+        .interest-card img { /* Optional: if you add icons/images */
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px auto;
+            filter: grayscale(50%) brightness(1.2); /* Subtle effect */
+        }
+        .interest-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-light);
+        }
+        .interest-card p {
+            font-size: 0.9rem;
+            color: var(--netflix-gray);
+        }
+
+
+        /* Timeline Styles for Achievements */
+        #timeline-content .container h2 { margin-left: 0; /* Reset margin for timeline title if needed */}
+        .timeline {
+            list-style: none;
+            padding: 20px 0 20px;
+            position: relative;
+            margin-left: 5%; /* Align with other content blocks */
+            margin-right: 5%;
+        }
+        .timeline:before {
+            top: 0;
+            bottom: 0;
+            position: absolute;
+            content: " ";
+            width: 3px;
+            background-color: var(--timeline-line-color);
+            left: 40px; /* Position the line */
+            margin-left: -1.5px;
+        }
+        .timeline .event {
+            margin: 0 0 40px 0; /* Increased bottom margin */
+            padding-left: 80px; /* Space for date and marker */
+            position: relative;
+        }
+        .timeline .event:before { /* Dot on the timeline */
+            content: " ";
+            position: absolute;
+            left: 40px;
+            top: 5px;
+            width: 15px;
+            height: 15px;
+            margin-left: -9px; /* Center the dot on the line */
+            background-color: var(--netflix-red);
+            border-radius: 50%;
+            border: 3px solid var(--netflix-dark);
+            z-index: 1;
+        }
+        .timeline .event:after { /* Year display */
+            content: attr(data-date);
+            position: absolute;
+            left: -15px; /* Position date to the left of the line */
+            top: 3px;
+            font-weight: bold;
+            color: var(--netflix-gray);
+            width: 40px; /* Ensure it doesn't overlap with line */
+            text-align: right;
+            font-size: 1.1em;
+        }
+        .timeline .event h3 {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 0.3rem;
+        }
+        .timeline .event p {
+            font-size: 0.95rem;
+            color: #bbb;
+            margin-bottom: 0;
+        }
+
+        .video-card { width: 90%; max-width: 800px; margin-left: 5%; margin-right: 5%; background-color: #000; }
+        .video-card iframe { width: 100%; height: 450px; border: none; display: block; }
+        .photo-card { width: 300px; height: 200px; background-color: var(--card-bg); }
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-card-large { width: 450px; height: auto; background-color: #2a2a2a; }
+        .photo-card-large img { width: 100%; height: 250px; object-fit: cover; }
+        .photo-card-large .caption { padding: 15px; }
+        .photo-card-large .caption h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .photo-card-large .caption p { font-size: 0.9rem; color: #ccc; }
+
+        #contact-row .row-content { padding-left: 5%; flex-wrap: wrap; }
+        .contact-button { display: inline-block; background-color: var(--netflix-red); color: var(--text-light); padding: 10px 20px; border-radius: 5px; margin: 10px 15px 10px 0; font-weight: bold; text-align: center; min-width: 180px; transition: background-color 0.3s ease; }
+        .contact-button:hover { background-color: #b00710; text-decoration: none; color: var(--text-light); }
+        #contact-row p { width: 100%; margin-left: 5%; margin-right: 5%; padding-right: 5%; }
+        #contact-row .contact-intro-text { width: calc(90% - 5%); margin-left: 0; margin-bottom: 1rem; }
+        footer { text-align: center; padding: 30px 0; background-color: #101010; margin-top: 40px; border-top: 1px solid #303030; }
+        footer p { color: var(--netflix-gray); font-size: 0.9rem; }
+        .sr-hidden { visibility: hidden; }
+
+        .video-item-card { width: 280px; height: auto; cursor: pointer; position: relative; background-color: var(--card-bg); }
+        .video-item-card img { width: 100%; height: 157.5px; object-fit: cover; display: block; border-top-left-radius: 5px; border-top-right-radius: 5px; }
+        .video-item-card .video-info-overlay { padding: 10px; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); position: absolute; bottom: 0; left: 0; width: 100%; opacity: 0; transition: opacity 0.3s ease; color: var(--text-light); border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
+        .video-item-card:hover .video-info-overlay { opacity: 1; }
+        .video-item-card .video-title-thumb { font-size: 1em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0; }
+        #video-gallery-container .category-video-row { margin-bottom: 20px; }
+        #video-gallery-container .category-video-row:last-child .row-content { padding-bottom: 1rem; }
+
+        .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; }
+        .modal-content { background-color: #181818; margin: auto; padding: 0; border: 1px solid #333; width: 80%; max-width: 900px; position: relative; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        .video-player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 6px; }
+        .video-player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .close-button { color: #aaa; position: absolute; top: -35px; right: 0px; font-size: 35px; font-weight: bold; cursor: pointer; background: transparent; border: none; padding: 0; }
+        .close-button:hover, .close-button:focus { color: #fff; text-decoration: none; }
+
+        @media (max-width: 768px) {
+            #hero-billboard h1 { font-size: 2.5rem; } #hero-billboard p { font-size: 1rem; } #hero-billboard .overlay-content { max-width: 80%; }
+            #main-header .container { flex-direction: column; align-items: flex-start; } #logo { margin-bottom: 0.5rem; }
+            #main-header nav ul { padding-left: 0; } #main-header nav ul li { margin-left: 0; margin-right: 15px; }
+            .content-row h2 { font-size: 1.3rem; } h4 { font-size: 1.2rem; }
+            .card { margin-right: 10px; }
+            .interest-card { width: 180px; } /* Adjust interest card */
+            .timeline:before { left: 20px; } /* Adjust timeline line on smaller screens */
+            .timeline .event { padding-left: 50px; } /* Adjust event padding for smaller screens */
+            .timeline .event:before { left: 20px; } /* Adjust dot position */
+            .timeline .event:after { left: -25px; font-size: 1em;} /* Adjust date position and size */
+            .photo-card { width: 220px; height: 150px; } .photo-card-large { width: 90%; margin: 0 auto 15px auto; }
+            .video-item-card { width: 220px; } .video-item-card img { height: 123.75px; }
+            .video-card iframe { height: 300px; }
+            #contact-row .row-content { justify-content: center; } .contact-button { width: 80%; margin-right: 0; }
+        }
+        @media (max-width: 480px) {
+            #main-header nav ul li a { font-size: 0.9rem; } #main-header nav ul { flex-wrap: wrap; } #main-header nav ul li { margin-bottom: 5px; }
+            #hero-billboard { height: 70vh; } #hero-billboard h1 { font-size: 2rem; }
+            .row-content { padding-left: 3%; } .content-row h2, h4 { margin-left: 3%; }
+            .card:last-child { margin-right: 3%; }
+            .interest-card { width: calc(50% - 10px); margin-bottom: 10px; } /* Make interest cards 2 per row */
+            .interest-card:nth-child(odd) { margin-right: 10px;}
+            .interest-card:nth-child(even) { margin-right: 3%;} /* Ensure right padding for last item in row */
+
+            .timeline { margin-left: 3%; margin-right: 3%; }
+            .timeline:before { left: 15px; }
+            .timeline .event { padding-left: 40px; }
+            .timeline .event:before { left: 15px; width: 12px; height: 12px; margin-left: -7px; border-width: 2px;}
+            .timeline .event:after { left: -30px; font-size: 0.9em;}
+            .video-item-card { width: 180px; } .video-item-card img { height: 101.25px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="progress-bar"></div>
+    <header id="main-header">
+        <div class="container">
+            <div id="logo">WIN</div>
+            <nav>
+                <ul>
+                    <li><a href="#hero-billboard" class="nav-link">Home</a></li>
+                    <li><a href="#about-row" class="nav-link">About</a></li>
+                    <li><a href="#timeline-content" class="nav-link">Achievements</a></li> <!-- Updated Nav Link -->
+                    <li><a href="#featured-video-row" class="nav-link">Video</a></li>
+                    <li><a href="#channelflix-gallery-row" class="nav-link">Gallery</a></li>
+                    <li><a href="#photography-row" class="nav-link">Photography</a></li>
+                    <li><a href="#contact-row" class="nav-link">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero-billboard" style="background-image: linear-gradient(to top, rgba(20, 20, 20, 1) 0%, rgba(20, 20, 20, 0) 60%), url('Pic6.webp');">
+            <div class="overlay-content"><h1>Win's Portfolio</h1><p>No risk. No story.</p></div>
+        </section>
+
+        <section id="about-row" class="content-row">
+            <div class="container">
+                <h2>About Me</h2>
+                <div class="about-card sr-hidden">
+                    <p>Hello, I'm Win (Kirati Rattanaporn), a passionate technology and creative enthusiast from Bangkok, Thailand. Currently in Grade 10, I have a strong interest in technology, astronomy, photography, and film. Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. My goal is to transfer to SPSM School to study multimedia and later pursue a degree at Chulalongkorn University's Faculty of Communication Arts. <br><br> You can learn more about me on my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank">Wikipedia page</a>.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Replaced Skills with Creative Interests -->
+        <section id="creative-interests-row" class="content-row">
+            <div class="container"><h2>Creative Interests</h2></div>
+            <div class="row-content">
+                <div class="card interest-card sr-hidden">
+                    <!-- Optional: <img src="film-icon.svg" alt="Film Icon"> -->
+                    <h3>Filmmaking</h3>
+                    <p>Crafting stories and bringing visions to life through video.</p>
+                </div>
+                <div class="card interest-card sr-hidden">
+                    <!-- Optional: <img src="tech-icon.svg" alt="Tech Icon"> -->
+                    <h3>Technology</h3>
+                    <p>Exploring new tech, coding, and building innovative projects like robotics.</p>
+                </div>
+                <div class="card interest-card sr-hidden">
+                    <!-- Optional: <img src="photo-icon.svg" alt="Photography Icon"> -->
+                    <h3>Photography</h3>
+                    <p>Capturing moments, perspectives, and the beauty of the world.</p>
+                </div>
+                <div class="card interest-card sr-hidden">
+                    <!-- Optional: <img src="astro-icon.svg" alt="Astronomy Icon"> -->
+                    <h3>Astronomy</h3>
+                    <p>Gazing at the cosmos and understanding our place in the universe.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Updated Achievements Section to Timeline -->
+        <section id="timeline-content" class="content-row">
+            <div class="container">
+                <h2 class="sr-hidden">Achievements and Awards</h2>
+                <ul class="timeline sr-hidden">
+                    <li class="event" data-date="2022"><h3>Gold Medal in Running</h3><p>Won a gold medal in the school sports day, showcasing speed and determination.</p></li>
+                    <li class="event" data-date="2022"><h3>Gold Medal in Robotics</h3><p>Earned my first gold medal in robotics, marking the beginning of my journey in technology.</p></li>
+                    <li class="event" data-date="2022"><h3>Gold Medal in Robotics</h3><p>Won another gold medal in robotics, further developing my skills in innovation.</p></li>
+                    <li class="event" data-date="2023"><h3>English Contest Award</h3><p>Received an award in an English contest, demonstrating strong language skills.</p></li>
+                    <li class="event" data-date="2023"><h3>Silver Medal in Running</h3><p>Won a silver medal at the school sports day, continuing my success in athletics.</p></li>
+                    <li class="event" data-date="2023"><h3>Gold Medal in Robotics</h3><p>Earned my third gold medal in robotics, proving my expertise in the field.</p></li>
+                    <li class="event" data-date="2023"><h3>Gold Medal in Robotics</h3><p>Achieved my fourth gold medal in robotics, further advancing my skills in technology.</p></li>
+                    <li class="event" data-date="2023"><h3>Southern EP Open House - Mathematics Project</h3><p>Won a gold award for excellence in a mathematics project.</p></li>
+                    <li class="event" data-date="2024"><h3>Gold Medal in Robotics - National Level</h3><p>Won my first gold medal in robotics at the national level.</p></li>
+                    <li class="event" data-date="2024"><h3>Gold Medal in Robotics - National Level</h3><p>Secured another gold medal in robotics at the national level.</p></li>
+                    <li class="event" data-date="2024"><h3>Silver Medal in 200m Running</h3><p>Won silver in the 200m race at the school sports day, finishing just 0.69 seconds behind the winner.</p></li>
+                    <li class="event" data-date="2024"><h3>Fourth Place in Running</h3><p>Finished fourth in a race at the school sports day, demonstrating perseverance.</p></li>
+                    <li class="event" data-date="2024"><h3>Silver Award in Regional English Contest</h3><p>Earned a silver award at the regional level, showcasing dedication to English.</p></li>
+                    <li class="event" data-date="2024"><h3>Southern EP Open House - Multi-Skills</h3><p>Earned a gold award in the multi-skills competition.</p></li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="featured-video-row" class="content-row">
+            <div class="container">
+                <h2>Feature Video</h2>
+                <div class="card video-card sr-hidden">
+                    <iframe src="https://www.youtube.com/embed/BMhot-xCYmk" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
+        </section>
+
+        <section id="channelflix-gallery-row" class="content-row">
+            <div class="container"><h2>ChannelFlix Gallery</h2></div>
+            <div id="video-gallery-container" class="sr-hidden"></div>
+        </section>
+
+        <section id="photography-row" class="content-row">
+            <div class="container">
+                <h2>Photography Showcase</h2>
+                <p class="section-subtitle" style="margin-left:5%; color: #bbb;">Capturing moments that speak louder than words.</p>
+            </div>
+            <div class="row-content">
+                <div class="card photo-card-large sr-hidden"><img src="Pic10.webp" alt="Technology in Photography"><div class="caption"><h3>Technology and Creativity</h3><p>Combining technology with creativity allows for endless possibilities in visual storytelling.</p></div></div>
+                <div class="card photo-card-large sr-hidden"><img src="Pic9.webp" alt="Creative Photography"><div class="caption"><h3>The Art of Storytelling</h3><p>Photography is not just about capturing images; it’s about telling stories through my lens.</p></div></div>
+            </div>
+        </section>
+
+        <section id="collage-row" class="content-row">
+            <div class="container"><h2>Gallery</h2></div>
+            <div class="row-content">
+                <div class="card photo-card sr-hidden"><img src="Pic2.webp" alt="Photo 2"></div>
+                <div class="card photo-card sr-hidden"><img src="Pic3.webp" alt="Photo 3"></div>
+                <div class="card photo-card sr-hidden"><img src="Pic4.webp" alt="Photo 4"></div>
+                <div class="card photo-card sr-hidden"><img src="Pic5.webp" alt="Photo 5"></div>
+                <div class="card photo-card sr-hidden"><img src="Pic6.webp" alt="Photo 6"></div>
+            </div>
+        </section>
+
+        <section id="contact-row" class="content-row">
+            <div class="container">
+                <h2>Contact</h2>
+                <p class="contact-intro-text sr-hidden">Feel free to reach out to me through the following platforms:</p>
+            </div>
+            <div class="row-content">
+                <a href="https://www.instagram.com/Win.rn" target="_blank" class="contact-button sr-hidden">Instagram (@Win.rn)</a>
+                <a href="https://www.instagram.com/Win.albums" target="_blank" class="contact-button sr-hidden">Photography Instagram (@Win.albums)</a>
+                <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" class="contact-button sr-hidden">YouTube Channel</a>
+                <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" class="contact-button sr-hidden">Wikipedia Biography</a>
+            </div>
+        </section>
+    </main>
+
+    <footer><div class="container"><p>© <span id="currentYear"></span> Win. All rights reserved. Netflix-style concept.</p></div></footer>
+    <div id="videoModal" class="modal"><div class="modal-content"><button class="close-button" id="closeModalButton">&times;</button><div id="youtubePlayerContainer" class="video-player-container"></div></div></div>
+
+    <script>
+        window.onscroll = function() {updateProgressBar()};
+        function updateProgressBar() {
+            var winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            var scrolled = (winScroll / height) * 100;
+            document.getElementById("progress-bar").style.width = scrolled + "%";
+            const header = document.getElementById('main-header');
+            if (winScroll > 50) header.classList.add('scrolled'); else header.classList.remove('scrolled');
+        }
+
+        const sr = ScrollReveal({
+            origin: 'bottom', distance: '50px', duration: 800, delay: 200,
+            easing: 'cubic-bezier(0.5, 0, 0, 1)', reset: false, viewFactor: 0.2,
+            mobile: true, useDelay: 'always',
+            beforeReveal: function (el) { el.classList.remove('sr-hidden'); }
+        });
+        
+        document.querySelectorAll('.nav-link').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    const headerOffset = document.getElementById('main-header').offsetHeight;
+                    const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
+                    const offsetPosition = elementPosition - headerOffset - 20; 
+                    window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+                }
+            });
+        });
+
+        const sections = document.querySelectorAll('section[id]');
+        const navLi = document.querySelectorAll('#main-header nav ul li a');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - document.getElementById('main-header').offsetHeight - 50;
+                if (pageYOffset >= sectionTop) current = section.getAttribute('id');
+            });
+            navLi.forEach(a => {
+                a.classList.remove('active');
+                if (a.getAttribute('href') && a.getAttribute('href').substring(1) === current) a.classList.add('active');
+            });
+            if (window.pageYOffset < sections[0].offsetTop - document.getElementById('main-header').offsetHeight - 50) {
+                 navLi.forEach(a => a.classList.remove('active'));
+                 const homeLink = document.querySelector('a.nav-link[href="#hero-billboard"]');
+                 if(homeLink) homeLink.classList.add('active');
+            }
+        });
+
+        const videosData = [
+            // School project
+            { id: "ViMLvE112jM", title: "School Project: Presentation", description: "A school presentation video.", category: "School Projects" },
+            { id: "npwdwAmkcVI", title: "School Project: Short Film", description: "A short film created for school.", category: "School Projects" },
+            { id: "D8CG4B3lOys", title: "School Project: Documentary", description: "A documentary style school project.", category: "School Projects" },
+            { id: "7GiZriajOks", title: "School Project: Creative Animation", description: "An animated piece for a school assignment.", category: "School Projects" },
+            // Random Project
+            { id: "BMhot-xCYmk", title: "Random Project: Music Video Concept", description: "A creative music video concept.", category: "Random Projects" },
+            { id: "84RAfMeMPKw", title: "Random Project: Experimental Edit", description: "An experimental video edit.", category: "Random Projects" },
+            { id: "YMh_7TcbCEQ", title: "Random Project: Travel Montage", description: "A montage of travel footage.", category: "Random Projects" },
+            { id: "rX0aNnZJaVE", title: "Random Project: Vlog Snippet", description: "A short snippet from a vlog.", category: "Random Projects" }
+        ];
+
+        const videoGalleryContainer = document.getElementById('video-gallery-container');
+        const modal = document.getElementById('videoModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const youtubePlayerContainer = document.getElementById('youtubePlayerContainer');
+        const currentYearSpan = document.getElementById('currentYear');
+
+        function getThumbnailUrl(videoId, quality = 'hqdefault') { return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`; }
+        
+        function renderVideoRows() {
+            if (!videoGalleryContainer) return;
+            const categories = {};
+            videosData.forEach(video => {
+                if (!categories[video.category]) categories[video.category] = [];
+                categories[video.category].push(video);
+            });
+            let galleryHTML = '';
+            for (const categoryName in categories) {
+                galleryHTML += `<div class="category-video-row"><h4>${categoryName}</h4><div class="row-content">`;
+                categories[categoryName].forEach(video => {
+                    galleryHTML += `<div class="card video-item-card" data-video-id="${video.id}"><img src="${getThumbnailUrl(video.id)}" alt="${video.title}"><div class="video-info-overlay"><p class="video-title-thumb">${video.title}</p></div></div>`;
+                });
+                galleryHTML += `</div></div>`;
+            }
+            videoGalleryContainer.innerHTML = galleryHTML;
+            document.querySelectorAll('.video-item-card').forEach(card => {
+                card.addEventListener('click', () => { openModalWithVideo(card.dataset.videoId); });
+            });
+        }
+
+        function openModalWithVideo(videoId) {
+            youtubePlayerContainer.innerHTML = ''; 
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+            iframe.setAttribute('frameborder', '0');
+            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+            iframe.setAttribute('allowfullscreen', '');
+            youtubePlayerContainer.appendChild(iframe);
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            youtubePlayerContainer.innerHTML = ''; 
+            document.body.style.overflow = 'auto';
+        }
+        
+        closeModalButton.addEventListener('click', closeModal);
+        window.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+        document.addEventListener('keydown', (event) => { if (event.key === "Escape" && modal.style.display === 'flex') closeModal(); });
+        
+        if (currentYearSpan) currentYearSpan.textContent = new Date().getFullYear();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            sr.reveal('.sr-hidden');
+            renderVideoRows();
+            let currentSection = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - document.getElementById('main-header').offsetHeight - 50;
+                if (pageYOffset >= sectionTop) currentSection = section.getAttribute('id');
+            });
+            navLi.forEach(a => {
+                a.classList.remove('active');
+                if (a.getAttribute('href') && a.getAttribute('href').substring(1) === currentSection) a.classList.add('active');
+            });
+            if (!currentSection && window.pageYOffset < sections[0].offsetTop - document.getElementById('main-header').offsetHeight - 50) {
+                 const homeLink = document.querySelector('a.nav-link[href="#hero-billboard"]');
+                 if(homeLink) homeLink.classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>

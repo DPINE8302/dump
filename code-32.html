@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandbox Wargame Creative Mode</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; }
+        
+        #loading-screen, #country-selection-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 10000; text-align: center;
+        }
+        #country-selection-screen select, #country-selection-screen button {
+            padding: 10px; font-size: 1.2em; margin: 10px; border-radius: 5px;
+        }
+
+        #app-container { display: none; /* Hidden until country is selected */ flex-direction: row; height: 100%; }
+        
+        #left-panel {
+            width: 220px; background-color: #e9ecef; padding: 15px; border-right: 1px solid #ced4da;
+            display: flex; flex-direction: column; gap: 15px; overflow-y: auto;
+        }
+        .panel-section { padding: 10px; background-color: #fff; border: 1px solid #dee2e6; border-radius: 5px; }
+        .panel-section h3 { margin-top: 0; font-size: 1.1em; color: #343a40; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+        .panel-section button, .panel-section select { 
+            width: 100%; padding: 8px; margin-bottom: 8px; box-sizing: border-box; 
+            background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;
+        }
+        .panel-section button:hover { background-color: #0056b3; }
+        .panel-section button.secondary { background-color: #6c757d; }
+        .panel-section button.secondary:hover { background-color: #545b62; }
+
+        .unit-palette-item {
+            padding: 10px; border: 1px dashed #adb5bd; margin-bottom: 8px;
+            cursor: grab; text-align: center; background-color: #f8f9fa; border-radius: 4px;
+        }
+        .unit-palette-item:hover { background-color: #e2e6ea; }
+
+        #map-container { flex-grow: 1; height: 100%; background-color: #adb5bd; }
+        
+        #right-panel {
+            width: 280px; background-color: #e9ecef; padding: 15px; border-left: 1px solid #ced4da;
+            overflow-y: auto; display: none; /* Hidden by default */
+        }
+        #right-panel h3 { margin-top: 0; color: #343a40; }
+        #right-panel div { margin-bottom: 10px; }
+        #right-panel label { display: block; margin-bottom: 3px; font-weight: bold; font-size: 0.9em; }
+        #right-panel p, #right-panel input[type="text"] { font-size: 0.9em; margin:0; }
+        #right-panel input[type="text"] { width: calc(100% - 12px); padding: 5px; border: 1px solid #ccc; border-radius: 3px;}
+        #right-panel button { width: auto; padding: 6px 12px; margin-top:10px; }
+
+
+        /* Leaflet Marker Icons */
+        .city-marker-icon { text-align: center; font-weight: bold; }
+        .city-marker-icon div { background-color: rgba(255,255,255,0.8); padding: 2px 5px; border-radius: 3px; border: 1px solid; }
+        .city-blue { border-color: blue !important; color: blue; }
+        .city-red { border-color: red !important; color: red; }
+        .city-neutral { border-color: grey !important; color: grey; }
+
+        .unit-marker-icon {
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; width: 28px !important; height: 28px !important;
+            color: white; font-weight: bold; font-size: 12px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .unit-blue { background-color: blue; border: 2px solid lightblue; }
+        .unit-red { background-color: red; border: 2px solid lightcoral; }
+        .selected-map-element { outline: 3px solid gold !important; outline-offset: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="country-selection-screen">
+        <h1>Select Your Country</h1>
+        <select id="countrySelector">
+            <option value="">-- Choose a Country --</option>
+            <!-- Options will be populated by JS -->
+        </select>
+        <button onclick="game.startGame()">Start Game</button>
+        <p id="selection-error" style="color: #ffc107; margin-top: 15px;"></p>
+    </div>
+
+    <div id="app-container">
+        <div id="left-panel">
+            <div class="panel-section">
+                <h3 id="player-country-name">Player Country</h3>
+                <p>Turn: <strong id="current-turn-display">Blue</strong></p>
+                <button onclick="game.toggleTurn()">End Turn / Toggle Team</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>Session</h3>
+                <button onclick="game.saveGame()">Save Game State</button>
+                <input type="file" id="loadGameFile" accept=".json" style="display: none;" onchange="game.handleFileLoad(event)">
+                <button class="secondary" onclick="document.getElementById('loadGameFile').click()">Load Game State</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>Place Units</h3>
+                <p style="font-size:0.85em;">Drag to map:</p>
+                <div class="unit-palette-item" draggable="true" data-unit-type="Infantry">Infantry (I)</div>
+                <div class="unit-palette-item" draggable="true" data-unit-type="Tank">Tank (T)</div>
+                <div class="unit-palette-item" draggable="true" data-unit-type="Artillery">Artillery (A)</div>
+                <!-- Add Air, Navy later if needed -->
+            </div>
+             <div class="panel-section">
+                <h3>Map Tools</h3>
+                <p style="font-size:0.85em;">(Leaflet.draw for paths/zones to be added here)</p>
+            </div>
+        </div>
+
+        <div id="map-container" id="map"></div>
+
+        <div id="right-panel">
+            <h3 id="selected-element-title">Element Details</h3>
+            <div id="city-details" style="display:none;">
+                <p><strong>Name:</strong> <span id="city-name"></span></p>
+                <p><strong>Control:</strong> <span id="city-control"></span></p>
+                <p><strong>Defense:</strong> <span id="city-defense"></span></p>
+                <button onclick="game.captureSelectedCity()">Attempt Capture (Next Turn)</button>
+            </div>
+            <div id="unit-details" style="display:none;">
+                <p><strong>Type:</strong> <span id="unit-type"></span></p>
+                <p><strong>Team:</strong> <span id="unit-team"></span></p>
+                <label for="unit-strength">Strength:</label>
+                <input type="text" id="unit-strength" onchange="game.updateSelectedUnitStat('strength', this.value)">
+                <label for="unit-movement">Movement Range (km):</label>
+                <input type="text" id="unit-movement" onchange="game.updateSelectedUnitStat('movementRange', this.value)">
+                <label for="unit-attack-range">Attack Range (km):</label>
+                <input type="text" id="unit-attack-range" onchange="game.updateSelectedUnitStat('attackRange', this.value)">
+                <p><strong>Location:</strong> <span id="unit-location"></span></p>
+            </div>
+            <hr>
+            <button onclick="game.deleteSelectedElement()" class="secondary">Delete Element</button>
+            <button onclick="game.deselectElement()">Close Panel</button>
+        </div>
+    </div>
+
+<script>
+const game = (function() {
+    let map;
+    let gameState = {
+        selectedCountryKey: null,
+        playerTeam: "Blue", // Player always starts as Blue for now
+        opponentTeam: "Red",
+        cities: [],
+        units: [],
+        currentTurn: "Blue",
+        nextUnitId: 0,
+        nextCityId: 0,
+    };
+
+    let mapLayers = {
+        cities: L.layerGroup(),
+        units: L.layerGroup(),
+    };
+    let selectedMapElement = null; // { id, type ('city' or 'unit'), layer }
+
+    // Predefined Country and City Data
+    const COUNTRIES_DATA = {
+        "Germany": {
+            mapView: { center: [51.1657, 10.4515], zoom: 6 },
+            cities: [
+                { name: "Berlin", coords: [52.5200, 13.4050], defense: 20 },
+                { name: "Hamburg", coords: [53.5511, 9.9937], defense: 15 },
+                { name: "Munich", coords: [48.1351, 11.5820], defense: 18 },
+            ]
+        },
+        "France": {
+            mapView: { center: [46.2276, 2.2137], zoom: 6 },
+            cities: [
+                { name: "Paris", coords: [48.8566, 2.3522], defense: 25 },
+                { name: "Marseille", coords: [43.2965, 5.3698], defense: 15 },
+                { name: "Lyon", coords: [45.7640, 4.8357], defense: 17 },
+            ]
+        },
+        "Poland": {
+            mapView: { center: [51.9194, 19.1451], zoom: 6 },
+            cities: [
+                { name: "Warsaw", coords: [52.2297, 21.0122], defense: 20 },
+                { name: "Krakow", coords: [50.0647, 19.9450], defense: 18 },
+                { name: "Gdansk", coords: [54.3721, 18.6383], defense: 15 },
+            ]
+        }
+    };
+
+    // UI Elements
+    const countrySelectionScreen = document.getElementById('country-selection-screen');
+    const appContainer = document.getElementById('app-container');
+    const countrySelector = document.getElementById('countrySelector');
+    const playerCountryNameDisplay = document.getElementById('player-country-name');
+    const currentTurnDisplay = document.getElementById('current-turn-display');
+    const rightPanel = document.getElementById('right-panel');
+    const cityDetailsPanel = document.getElementById('city-details');
+    const unitDetailsPanel = document.getElementById('unit-details');
+
+    function initialize() {
+        Object.keys(COUNTRIES_DATA).forEach(countryKey => {
+            let option = new Option(countryKey, countryKey);
+            countrySelector.add(option);
+        });
+
+        // Init map (will be properly set after country selection)
+        map = L.map('map-container').setView([51.505, -0.09], 5); // Default view
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        mapLayers.cities.addTo(map);
+        mapLayers.units.addTo(map);
+        
+        map.on('click', deselectElement); // Click on map to deselect
+
+        // Drag and Drop for unit palette
+        const unitPaletteItems = document.querySelectorAll('.unit-palette-item');
+        unitPaletteItems.forEach(item => item.addEventListener('dragstart', handleDragStart));
+        
+        const mapDomElement = document.getElementById('map-container');
+        mapDomElement.addEventListener('dragover', handleDragOver);
+        mapDomElement.addEventListener('drop', handleDrop);
+    }
+
+    function startGame() {
+        const selectedCountryKey = countrySelector.value;
+        if (!selectedCountryKey) {
+            document.getElementById('selection-error').textContent = "Please select a country to start.";
+            return;
+        }
+        document.getElementById('selection-error').textContent = "";
+
+        gameState.selectedCountryKey = selectedCountryKey;
+        const countryData = COUNTRIES_DATA[selectedCountryKey];
+
+        countrySelectionScreen.style.display = 'none';
+        appContainer.style.display = 'flex';
+        
+        playerCountryNameDisplay.textContent = `${selectedCountryKey} (${gameState.playerTeam})`;
+        map.setView(countryData.mapView.center, countryData.mapView.zoom);
+
+        // Initialize cities for the selected country
+        countryData.cities.forEach(cityData => {
+            const city = {
+                id: `city_${gameState.nextCityId++}`,
+                name: cityData.name,
+                coords: cityData.coords,
+                control: gameState.playerTeam, // Player initially controls their cities
+                defense: cityData.defense,
+                captureProgress: 0, // For multi-turn capture
+                captureThreshold: 2, // e.g., 2 turns to capture
+            };
+            gameState.cities.push(city);
+            addCityMarker(city);
+        });
+        renderAll();
+    }
+
+    function addCityMarker(city) {
+        const iconHtml = `<div class="city-marker-icon city-${city.control.toLowerCase()}">★<br>${city.name}</div>`;
+        const cityIcon = L.divIcon({
+            html: iconHtml,
+            className: '', // Avoid Leaflet's default class for full control
+            iconSize: [80, 40], // Adjust as needed
+            iconAnchor: [40, 20] // Center it
+        });
+        const marker = L.marker(city.coords, { icon: cityIcon, cityId: city.id })
+            .addTo(mapLayers.cities)
+            .on('click', (e) => {
+                L.DomEvent.stopPropagation(e); // Prevent map click from deselecting
+                selectElement(city.id, 'city', marker);
+            });
+        city.layer = marker; // Store layer reference
+    }
+
+    function getUnitIcon(unit) {
+        const symbol = unit.type.charAt(0).toUpperCase();
+        return L.divIcon({
+            html: `<div class="unit-marker-icon unit-${unit.team.toLowerCase()}">${symbol}</div>`,
+            className: '',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+    }
+
+    function addUnit(unitData) {
+        const unit = {
+            id: `unit_${gameState.nextUnitId++}`,
+            type: unitData.type,
+            team: unitData.team || gameState.currentTurn, // Default to current player's team
+            strength: unitData.strength || 100,
+            movementRange: unitData.movementRange || 200, // in km
+            attackRange: unitData.attackRange || 50,   // in km
+            speed: unitData.speed || 50, // km/turn (placeholder)
+            fuel: unitData.fuel || 100, // (Optional)
+            controlZone: unitData.controlZone || false, // (Optional)
+            location: unitData.location, // [lat, lng]
+            layer: null
+        };
+        gameState.units.push(unit);
+        
+        const marker = L.marker(unit.location, { 
+                icon: getUnitIcon(unit), 
+                draggable: true, 
+                unitId: unit.id 
+            })
+            .addTo(mapLayers.units)
+            .on('dragend', (event) => {
+                const movedUnit = gameState.units.find(u => u.id === event.target.options.unitId);
+                if (movedUnit) movedUnit.location = [event.target.getLatLng().lat, event.target.getLatLng().lng];
+                if(selectedMapElement && selectedMapElement.id === movedUnit.id) displayUnitDetails(movedUnit); // Update location in panel
+            })
+            .on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                selectElement(unit.id, 'unit', marker);
+            });
+        unit.layer = marker;
+    }
+    
+    function handleDragStart(e) {
+        e.dataTransfer.setData('text/plain', e.target.dataset.unitType);
+    }
+    function handleDragOver(e) { e.preventDefault(); }
+    function handleDrop(e) {
+        e.preventDefault();
+        const unitType = e.dataTransfer.getData('text/plain');
+        const mapContainerRect = document.getElementById('map-container').getBoundingClientRect();
+        const point = L.point(e.clientX - mapContainerRect.left, e.clientY - mapContainerRect.top);
+        const latlng = map.containerPointToLatLng(point);
+
+        addUnit({ type: unitType, location: [latlng.lat, latlng.lng] });
+    }
+
+    function selectElement(id, type, layer) {
+        deselectElement(); // Clear previous selection
+        selectedMapElement = { id, type, layer };
+        layer.getElement()?.classList.add('selected-map-element');
+        rightPanel.style.display = 'block';
+        document.getElementById('selected-element-title').textContent = type === 'city' ? 'City Details' : 'Unit Details';
+
+        if (type === 'city') {
+            const city = gameState.cities.find(c => c.id === id);
+            if (city) displayCityDetails(city);
+        } else if (type === 'unit') {
+            const unit = gameState.units.find(u => u.id === id);
+            if (unit) displayUnitDetails(unit);
+        }
+    }
+    
+    function displayCityDetails(city) {
+        cityDetailsPanel.style.display = 'block';
+        unitDetailsPanel.style.display = 'none';
+        document.getElementById('city-name').textContent = city.name;
+        document.getElementById('city-control').textContent = city.control;
+        document.getElementById('city-control').className = `city-${city.control.toLowerCase()}`;
+        document.getElementById('city-defense').textContent = city.defense;
+    }
+
+    function displayUnitDetails(unit) {
+        cityDetailsPanel.style.display = 'none';
+        unitDetailsPanel.style.display = 'block';
+        document.getElementById('unit-type').textContent = unit.type;
+        document.getElementById('unit-team').textContent = unit.team;
+        document.getElementById('unit-strength').value = unit.strength;
+        document.getElementById('unit-movement').value = unit.movementRange;
+        document.getElementById('unit-attack-range').value = unit.attackRange;
+        document.getElementById('unit-location').textContent = `${unit.location[0].toFixed(4)}, ${unit.location[1].toFixed(4)}`;
+    }
+    
+    function updateSelectedUnitStat(statKey, value) {
+        if (!selectedMapElement || selectedMapElement.type !== 'unit') return;
+        const unit = gameState.units.find(u => u.id === selectedMapElement.id);
+        if (unit) {
+            unit[statKey] = parseFloat(value) || value; // Convert to number if possible
+            console.log(`Unit ${unit.id} ${statKey} updated to ${unit[statKey]}`);
+        }
+    }
+
+
+    function deselectElement() {
+        if (selectedMapElement && selectedMapElement.layer) {
+            selectedMapElement.layer.getElement()?.classList.remove('selected-map-element');
+        }
+        selectedMapElement = null;
+        rightPanel.style.display = 'none';
+        cityDetailsPanel.style.display = 'none';
+        unitDetailsPanel.style.display = 'none';
+    }
+    
+    function deleteSelectedElement() {
+        if (!selectedMapElement) return;
+        if (selectedMapElement.type === 'city') {
+            // Decide if cities can be deleted or only units
+            alert("Cities cannot be deleted in this version.");
+        } else if (selectedMapElement.type === 'unit') {
+            gameState.units = gameState.units.filter(u => u.id !== selectedMapElement.id);
+            mapLayers.units.removeLayer(selectedMapElement.layer);
+        }
+        deselectElement();
+    }
+
+    function toggleTurn() {
+        // Simple toggle for creative mode. Real turn logic is more complex.
+        gameState.currentTurn = (gameState.currentTurn === gameState.playerTeam) ? gameState.opponentTeam : gameState.playerTeam;
+        currentTurnDisplay.textContent = gameState.currentTurn;
+        console.log(`Turn switched to: ${gameState.currentTurn}`);
+        
+        // Simple capture progress for any city with an enemy unit ending turn on it.
+        // For a real game, you'd check specific unit locations.
+        // This is a placeholder for the "Capture Mechanics"
+        if (selectedMapElement && selectedMapElement.type === 'city') {
+            const city = gameState.cities.find(c => c.id === selectedMapElement.id);
+            if (city && city.control !== gameState.currentTurn) { // If current player is enemy to city owner
+                 city.captureProgress = (city.captureProgress || 0) + 1;
+                 console.log(`${city.name} capture progress: ${city.captureProgress}/${city.captureThreshold}`);
+                 if (city.captureProgress >= city.captureThreshold) {
+                    city.control = gameState.currentTurn;
+                    city.captureProgress = 0;
+                    console.log(`${city.name} captured by ${city.control}!`);
+                    city.layer.setIcon(L.divIcon({ // Update marker style
+                        html: `<div class="city-marker-icon city-${city.control.toLowerCase()}">★<br>${city.name}</div>`,
+                        className: '', iconSize: [80, 40], iconAnchor: [40, 20]
+                    }));
+                    displayCityDetails(city); // Refresh panel if this city is selected
+                 }
+            }
+        }
+    }
+    
+    function captureSelectedCity() { // Called by button
+        if (!selectedMapElement || selectedMapElement.type !== 'city') {
+            alert("Select a city first.");
+            return;
+        }
+        const city = gameState.cities.find(c => c.id === selectedMapElement.id);
+        if (city.control === gameState.currentTurn) {
+            alert("You already control this city.");
+            return;
+        }
+        // This is simplified. Actual capture requires unit presence.
+        // We'll use the toggleTurn logic to advance capture.
+        alert(`Capture initiated for ${city.name}. End turns while 'occupying' to complete capture.`);
+        // For now, just prime it for the next turn end logic
+        city.captureProgress = 0; // Reset or start progress
+    }
+
+
+    function saveGame() {
+        // Create a serializable version of gameState (layers cannot be directly serialized)
+        const stateToSave = {
+            ...gameState,
+            cities: gameState.cities.map(c => ({ ...c, layer: undefined })), // Remove layer refs
+            units: gameState.units.map(u => ({ ...u, layer: undefined })),   // Remove layer refs
+        };
+        const jsonString = JSON.stringify(stateToSave, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "wargame-save.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
+    function handleFileLoad(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const loadedState = JSON.parse(e.target.result);
+                loadGame(loadedState);
+            } catch (error) {
+                alert("Error loading game state: " + error.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = null; // Reset file input
+    }
+
+    function loadGame(loadedState) {
+        // Clear current map elements
+        mapLayers.cities.clearLayers();
+        mapLayers.units.clearLayers();
+
+        gameState = { ...loadedState }; // Overwrite with loaded state
+        
+        // Restore country UI
+        countrySelector.value = gameState.selectedCountryKey;
+        playerCountryNameDisplay.textContent = `${gameState.selectedCountryKey} (${gameState.playerTeam})`;
+        currentTurnDisplay.textContent = gameState.currentTurn;
+        
+        const countryData = COUNTRIES_DATA[gameState.selectedCountryKey];
+        if (countryData) {
+             map.setView(countryData.mapView.center, countryData.mapView.zoom); // Or saved map view if available
+        }
+
+        // Re-add cities and units to map
+        gameState.cities.forEach(addCityMarker);
+        gameState.units.forEach(unitData => {
+            // We need to call the main addUnit function to recreate layer and event listeners
+            // but ensure IDs are not duplicated if they were part of saved state
+            // For simplicity here, we assume loaded unitData has correct properties.
+            // A more robust way would be to pass the full unit object.
+            const existingUnit = gameState.units.find(u => u.id === unitData.id); // Should be the same object
+            if (existingUnit) {
+                 const marker = L.marker(existingUnit.location, { 
+                        icon: getUnitIcon(existingUnit), 
+                        draggable: true, 
+                        unitId: existingUnit.id 
+                    })
+                    .addTo(mapLayers.units)
+                    .on('dragend', (event) => {
+                        const movedUnit = gameState.units.find(u => u.id === event.target.options.unitId);
+                        if (movedUnit) movedUnit.location = [event.target.getLatLng().lat, event.target.getLatLng().lng];
+                         if(selectedMapElement && selectedMapElement.id === movedUnit.id) displayUnitDetails(movedUnit);
+                    })
+                    .on('click', (e) => {
+                        L.DomEvent.stopPropagation(e);
+                        selectElement(existingUnit.id, 'unit', marker);
+                    });
+                existingUnit.layer = marker;
+            }
+        });
+        renderAll();
+        deselectElement();
+        alert("Game state loaded successfully!");
+    }
+
+    function renderAll() { // Call this if major state changes affect global view
+        currentTurnDisplay.textContent = gameState.currentTurn;
+        // Could add more comprehensive re-rendering here if needed
+    }
+
+    // Initialize on script load
+    initialize();
+
+    // Public API
+    return {
+        startGame,
+        toggleTurn,
+        saveGame,
+        handleFileLoad,
+        selectElement, // Potentially for direct calls
+        deselectElement,
+        deleteSelectedElement,
+        updateSelectedUnitStat,
+        captureSelectedCity
+    };
+})();
+</script>
+</body>
+</html>

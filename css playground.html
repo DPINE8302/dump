@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Animation Playground</title>
+    <style>
+        :root {
+            --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            
+            /* Light Theme (Apple-inspired) */
+            --bg-color: #f4f4f5; 
+            --pane-bg-color: #ffffff;
+            --header-bg-color: #f9f9f9; 
+            --text-color: #1d1d1f; 
+            --text-color-secondary: #6e6e73; 
+            --border-color: #dcdcdc; 
+            --textarea-bg-color: #ffffff;
+            --textarea-text-color: #1d1d1f;
+            --control-bg-color: rgba(248, 248, 248, 0.85); 
+            --control-bg-color-rgb: 248, 248, 248; /* For rgba usage */
+            --button-bg-color: #e9e9eb;
+            --button-text-color: #1d1d1f;
+            --button-hover-bg-color: #dedee0;
+            --button-active-bg-color: #d1d1d3;
+            --button-border-color: transparent; 
+            --input-bg-color: #f0f0f0;
+            --input-border-color: #c6c6c8;
+            --shadow-color: rgba(0,0,0,0.06);
+            --shadow-stronger-color: rgba(0,0,0,0.1);
+            --accent-color: #007aff; 
+            --footer-text-color: #8a8a8e;
+        }
+
+        body.dark-theme {
+            --bg-color: #1c1c1e; 
+            --pane-bg-color: #2c2c2e;
+            --header-bg-color: #3a3a3c; 
+            --text-color: #f5f5f7; 
+            --text-color-secondary: #8e8e93;
+            --border-color: #38383a;
+            --textarea-bg-color: #2c2c2e;
+            --textarea-text-color: #f5f5f7;
+            --control-bg-color: rgba(30, 30, 32, 0.85); 
+            --control-bg-color-rgb: 30, 30, 32; /* For rgba usage */
+            --button-bg-color: #3a3a3c;
+            --button-text-color: #f5f5f7;
+            --button-hover-bg-color: #48484a;
+            --button-active-bg-color: #545456;
+            --button-border-color: transparent;
+            --input-bg-color: #3a3a3c;
+            --input-border-color: #545456;
+            --shadow-color: rgba(0,0,0,0.2);
+            --shadow-stronger-color: rgba(0,0,0,0.3);
+            --footer-text-color: #636366;
+        }
+
+        body {
+            font-family: var(--system-font);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            font-size: 14px; 
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .editor-container {
+            display: flex;
+            flex-basis: 45%; 
+            min-height: 220px; 
+            gap: 15px; 
+            padding: 15px 15px 7px 15px;
+        }
+
+        .editor-pane {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            background-color: var(--pane-bg-color);
+            border-radius: 12px; 
+            box-shadow: 0 3px 8px var(--shadow-color), 0 1px 2px var(--shadow-stronger-color);
+            overflow: hidden;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .editor-pane h2 {
+            margin: 0;
+            padding: 12px 18px; 
+            background-color: var(--header-bg-color);
+            font-size: 0.95em; 
+            font-weight: 500; 
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+
+        textarea {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: none;
+            outline: none;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.9em; 
+            line-height: 1.5;
+            resize: none;
+            background-color: var(--textarea-bg-color);
+            color: var(--textarea-text-color);
+            transition: background-color 0.3s, color 0.3s;
+            border-bottom-left-radius: 12px; 
+            border-bottom-right-radius: 12px;
+        }
+        textarea:focus-visible {
+            box-shadow: inset 0 0 0 2px var(--accent-color); 
+        }
+
+
+        .preview-container {
+            flex-grow: 1; 
+            padding: 7px 15px 15px 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0 0 8px 0; 
+            padding: 0 10px 0 18px; /* Adjusted padding for button */
+            height: 48px; 
+            background-color: var(--pane-bg-color); 
+            font-weight: 500;
+            color: var(--text-color);
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            border: 1px solid var(--border-color);
+            border-bottom: none; 
+            box-shadow: 0 3px 8px var(--shadow-color); 
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s;
+        }
+        .preview-header h2 {
+            margin: 0;
+            padding: 0; 
+            font-size: 0.95em; 
+            font-weight: inherit;
+            background-color: transparent;
+            border: none;
+            box-shadow: none;
+        }
+        body.dark-theme .preview-header {
+             background-color: var(--header-bg-color);
+        }
+
+        #toggle-fullscreen-preview {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background-color: var(--button-bg-color);
+            border: 1px solid transparent; /* Keep consistent height with bordered buttons */
+            border-radius: 7px;
+            color: var(--button-text-color);
+            font-size: 0.85em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #toggle-fullscreen-preview:hover {
+            background-color: var(--button-hover-bg-color);
+        }
+        .fullscreen-icon {
+            font-size: 1.1em; 
+            line-height: 1; /* Prevent icon from affecting button height */
+        }
+
+
+        #preview-frame {
+            flex-grow: 1;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            background-color: #fff; 
+            box-shadow: 0 3px 8px var(--shadow-color), 0 1px 2px var(--shadow-stronger-color);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        body.dark-theme #preview-frame {
+             background-color: var(--pane-bg-color); 
+        }
+        .preview-header + #preview-frame { /* Selector for iframe directly after header */
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+            border-top-color: transparent; 
+        }
+
+
+        .controls-container {
+            padding: 12px 18px;
+            background-color: var(--control-bg-color);
+            backdrop-filter: blur(10px) saturate(180%); 
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            display: flex;
+            flex-wrap: wrap; 
+            gap: 12px; 
+            align-items: center;
+            box-shadow: 0 -2px 5px var(--shadow-color);
+            border-top: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+            position: relative; /* For potential absolute positioned elements inside */
+            z-index: 10; /* Ensure it's above body content if any overlap happens */
+        }
+
+        .controls-container button, 
+        .controls-container select, 
+        .controls-container input[type="text"] {
+            padding: 8px 14px; 
+            border: 1px solid var(--button-border-color);
+            border-radius: 8px; 
+            background-color: var(--button-bg-color);
+            color: var(--button-text-color);
+            cursor: pointer;
+            font-size: 0.9em; 
+            font-weight: 500;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .controls-container button:hover {
+            background-color: var(--button-hover-bg-color);
+        }
+        .controls-container button:active {
+            background-color: var(--button-active-bg-color);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .controls-container input[type="text"],
+        .controls-container select {
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--input-border-color);
+            color: var(--text-color); 
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .controls-container input[type="text"]:focus,
+        .controls-container select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3); 
+        }
+
+        .controls-container input[type="text"] {
+            min-width: 160px; 
+        }
+        .controls-container label {
+            font-size: 0.9em;
+            color: var(--text-color-secondary);
+            margin-right: 5px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px; 
+        }
+        .spacer {
+            flex-grow: 1; 
+        }
+        
+        #delete-preset {
+            padding: 8px 10px; 
+        }
+        #toggle-theme {
+            padding: 8px 10px; 
+        }
+
+        .app-footer {
+            padding: 10px 18px;
+            text-align: center;
+            font-size: 0.8em;
+            color: var(--footer-text-color);
+            background-color: var(--bg-color); /* Match body background */
+            border-top: 1px solid var(--border-color);
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        /* --- Fullscreen Preview Styles --- */
+        body.preview-fullscreen .editor-container,
+        body.preview-fullscreen .controls-container,
+        body.preview-fullscreen .app-footer {
+            display: none !important;
+        }
+
+        body.preview-fullscreen .preview-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+            z-index: 1000;
+            background-color: var(--bg-color); 
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        body.preview-fullscreen .preview-header {
+            position: fixed; /* Keep it visible for the exit button */
+            top: 15px;
+            right: 15px;
+            width: auto; /* Fit content */
+            height: auto;
+            background-color: rgba(var(--control-bg-color-rgb), 0.7);
+            backdrop-filter: blur(8px) saturate(150%);
+            -webkit-backdrop-filter: blur(8px) saturate(150%);
+            border: 1px solid rgba(var(--border-color),0.5);
+            border-radius: 8px;
+            box-shadow: 0 3px 10px var(--shadow-stronger-color);
+            padding: 0; /* Button will have its own padding */
+            z-index: 1001; /* Above iframe */
+        }
+        body.preview-fullscreen .preview-header h2 {
+            display: none; /* Hide "Live Preview" text in fullscreen */
+        }
+        body.preview-fullscreen #toggle-fullscreen-preview {
+            /* Style as a clear exit button */
+            background-color: transparent; /* Handled by header in fullscreen */
+            border: none;
+            padding: 10px 15px; /* Make it a bit more prominent */
+            font-size: 0.9em;
+        }
+        body.preview-fullscreen #toggle-fullscreen-preview:hover {
+             background-color: rgba(var(--button-hover-bg-color),0.5);
+        }
+
+
+        body.preview-fullscreen #preview-frame {
+            width: 100%;
+            height: 100%; 
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            margin-top: 0; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="editor-container">
+        <div class="editor-pane">
+            <h2>HTML</h2>
+            <textarea id="html-editor" spellcheck="false" aria-label="HTML Code Editor"></textarea>
+        </div>
+        <div class="editor-pane">
+            <h2>CSS</h2>
+            <textarea id="css-editor" spellcheck="false" aria-label="CSS Code Editor"></textarea>
+        </div>
+    </div>
+
+    <div class="preview-container">
+        <div class="preview-header">
+            <h2>Live Preview</h2>
+            <button id="toggle-fullscreen-preview" title="Toggle Fullscreen Preview">
+                <span class="fullscreen-icon">🖼️</span>
+                <span class="fullscreen-text">Fullscreen</span>
+            </button>
+        </div>
+        <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin" title="Live Preview of HTML and CSS"></iframe>
+    </div>
+
+    <div class="controls-container">
+        <div class="control-group">
+            <input type="text" id="preset-name" placeholder="Preset Name" aria-label="Preset Name">
+            <button id="save-preset">Save Preset</button>
+        </div>
+        
+        <div class="control-group">
+            <label for="load-preset-select">Load Preset:</label>
+            <select id="load-preset-select" aria-label="Load Preset">
+                <option value="">-- Select Preset --</option>
+            </select>
+            <button id="delete-preset" title="Delete Selected Preset">🗑️ Delete</button>
+        </div>
+
+        <div class="control-group">
+            <button id="copy-html">Copy HTML</button>
+            <button id="copy-css">Copy CSS</button>
+        </div>
+        <div class="control-group">
+            <button id="download-html">Download HTML</button>
+            <button id="download-css">Download CSS</button>
+        </div>
+        <div class="spacer"></div>
+        <button id="toggle-theme" title="Toggle Light/Dark Theme">🌓 Theme</button>
+    </div>
+
+    <footer class="app-footer">
+        <p>&copy; <span id="current-year"></span> Wiqnnc_. All Rights Reserved.</p>
+    </footer>
+
+    <script>
+        // --- DOM Element References ---
+        const htmlEditor = document.getElementById('html-editor');
+        const cssEditor = document.getElementById('css-editor');
+        const previewFrame = document.getElementById('preview-frame');
+        
+        const savePresetButton = document.getElementById('save-preset');
+        const loadPresetSelect = document.getElementById('load-preset-select');
+        const deletePresetButton = document.getElementById('delete-preset');
+        const presetNameInput = document.getElementById('preset-name');
+
+        const copyHtmlButton = document.getElementById('copy-html');
+        const copyCssButton = document.getElementById('copy-css');
+        const downloadHtmlButton = document.getElementById('download-html');
+        const downloadCssButton = document.getElementById('download-css');
+        const toggleThemeButton = document.getElementById('toggle-theme');
+        const toggleFullscreenButton = document.getElementById('toggle-fullscreen-preview');
+        const currentYearSpan = document.getElementById('current-year');
+
+
+        // --- Constants ---
+        const PRESETS_STORAGE_KEY = 'cssAnimationPlaygroundPresets_v2'; 
+        const THEME_STORAGE_KEY = 'cssAnimationPlaygroundTheme_v2';
+        const LAST_CONTENT_STORAGE_KEY = 'cssAnimationPlaygroundLastContent_v2';
+
+
+        // --- Live Preview Update ---
+        let previewUpdateTimeout;
+        function schedulePreviewUpdate() {
+            clearTimeout(previewUpdateTimeout);
+            previewUpdateTimeout = setTimeout(updatePreview, 250); 
+        }
+
+        function updatePreview() {
+            const htmlContent = htmlEditor.value;
+            const cssContent = cssEditor.value;
+
+            localStorage.setItem(LAST_CONTENT_STORAGE_KEY, JSON.stringify({html: htmlContent, css: cssContent}));
+
+            const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            
+            previewDocument.open();
+            previewDocument.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        /* Basic reset for preview */
+                        body { margin: 0; padding: 10px; box-sizing: border-box; font-family: ${getComputedStyle(document.body).fontFamily}; }
+                        ${cssContent}
+                    </style>
+                </head>
+                <body>
+                    ${htmlContent}
+                </body>
+                </html>
+            `);
+            previewDocument.close();
+        }
+
+        // --- Event Listeners for Editors ---
+        htmlEditor.addEventListener('input', schedulePreviewUpdate);
+        cssEditor.addEventListener('input', schedulePreviewUpdate);
+
+        // --- Preset Management ---
+        function getPresets() {
+            const presetsJson = localStorage.getItem(PRESETS_STORAGE_KEY);
+            return presetsJson ? JSON.parse(presetsJson) : [];
+        }
+
+        function savePresets(presets) {
+            localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+            populatePresetDropdown(); 
+        }
+
+        function populatePresetDropdown() {
+            const presets = getPresets();
+            const currentSelectedValue = loadPresetSelect.value; 
+            loadPresetSelect.innerHTML = '<option value="">-- Select Preset --</option>';
+            
+            presets.sort((a, b) => a.name.localeCompare(b.name)); 
+
+            presets.forEach((preset) => { 
+                const option = document.createElement('option');
+                option.value = preset.id; 
+                option.textContent = preset.name;
+                loadPresetSelect.appendChild(option);
+            });
+            
+            if (presets.find(p => p.id === currentSelectedValue)) {
+                loadPresetSelect.value = currentSelectedValue;
+            }
+        }
+
+        savePresetButton.addEventListener('click', () => {
+            const name = presetNameInput.value.trim();
+            if (!name) {
+                alert('Please enter a name for the preset.');
+                presetNameInput.focus();
+                return;
+            }
+            const html = htmlEditor.value;
+            const css = cssEditor.value;
+
+            let presets = getPresets();
+            const existingPreset = presets.find(p => p.name === name);
+
+            if (existingPreset) {
+                if (confirm(`Preset "${name}" already exists. Overwrite?`)) {
+                    existingPreset.html = html;
+                    existingPreset.css = css;
+                } else {
+                    return;
+                }
+            } else {
+                presets.push({ id: Date.now().toString(), name, html, css });
+            }
+            
+            savePresets(presets);
+            alert(`Preset "${name}" saved!`);
+            
+            const savedPreset = presets.find(p => p.name === name);
+            if (savedPreset) {
+                 loadPresetSelect.value = savedPreset.id;
+            }
+        });
+
+        loadPresetSelect.addEventListener('change', () => {
+            const selectedValue = loadPresetSelect.value;
+            if (selectedValue === "") {
+                presetNameInput.value = '';
+                return;
+            }
+
+            const presets = getPresets();
+            const selectedPreset = presets.find(p => p.id === selectedValue);
+
+            if (selectedPreset) {
+                htmlEditor.value = selectedPreset.html;
+                cssEditor.value = selectedPreset.css;
+                presetNameInput.value = selectedPreset.name; 
+                updatePreview(); 
+            }
+        });
+
+        deletePresetButton.addEventListener('click', () => {
+            const selectedValue = loadPresetSelect.value;
+            if (selectedValue === "") {
+                alert('Please select a preset to delete.');
+                return;
+            }
+
+            let presets = getPresets();
+            const selectedPreset = presets.find(p => p.id === selectedValue);
+
+            if (selectedPreset && confirm(`Are you sure you want to delete preset "${selectedPreset.name}"?`)) {
+                presets = presets.filter(p => p.id !== selectedValue);
+                savePresets(presets);
+                presetNameInput.value = ''; 
+                alert(`Preset "${selectedPreset.name}" deleted.`);
+                if (loadPresetSelect.options.length > 1) { 
+                    loadPresetSelect.selectedIndex = 0; 
+                } else { 
+                    htmlEditor.value = ''; 
+                    cssEditor.value = '';
+                    updatePreview();
+                }
+            }
+        });
+
+        // --- Export Functionality ---
+        function copyToClipboard(text, type) {
+            if (!navigator.clipboard) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed"; 
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert(`${type} copied to clipboard! (fallback method)`);
+                } catch (err) {
+                    alert(`Failed to copy ${type}. Please copy manually.`);
+                }
+                document.body.removeChild(textArea);
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                alert(`${type} copied to clipboard!`);
+            }).catch(err => {
+                console.error(`Could not copy ${type}: `, err);
+                alert(`Failed to copy ${type}. See console for details or try fallback.`);
+            });
+        }
+
+        copyHtmlButton.addEventListener('click', () => copyToClipboard(htmlEditor.value, 'HTML'));
+        copyCssButton.addEventListener('click', () => copyToClipboard(cssEditor.value, 'CSS'));
+
+        function downloadFile(filename, content, mimeType) {
+            const element = document.createElement('a');
+            const blob = new Blob([content], {type: mimeType});
+            element.href = URL.createObjectURL(blob);
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+            URL.revokeObjectURL(element.href); 
+        }
+
+        downloadHtmlButton.addEventListener('click', () => {
+            const completeHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation Preview</title>
+    <style>
+body { font-family: ${getComputedStyle(document.body).fontFamily}; } 
+${cssEditor.value}
+    </style>
+</head>
+<body>
+${htmlEditor.value}
+</body>
+</html>`;
+            downloadFile('animation.html', completeHtml, 'text/html');
+        });
+
+        downloadCssButton.addEventListener('click', () => {
+            downloadFile('styles.css', cssEditor.value, 'text/css');
+        });
+
+        // --- Theme Toggle ---
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-theme');
+                toggleThemeButton.textContent = '☀️'; 
+                toggleThemeButton.title = 'Switch to Light Theme';
+            } else {
+                document.body.classList.remove('dark-theme');
+                toggleThemeButton.textContent = '🌙'; 
+                toggleThemeButton.title = 'Switch to Dark Theme';
+            }
+            localStorage.setItem(THEME_STORAGE_KEY, theme);
+            updatePreview(); 
+        }
+        
+        toggleThemeButton.addEventListener('click', () => {
+            const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+        });
+
+        // --- Fullscreen Preview Toggle ---
+        function setPreviewFullscreen(isFullscreen) {
+            const iconSpan = toggleFullscreenButton.querySelector('.fullscreen-icon');
+            const textSpan = toggleFullscreenButton.querySelector('.fullscreen-text');
+
+            if (isFullscreen) {
+                document.body.classList.add('preview-fullscreen');
+                if(iconSpan) iconSpan.textContent = '✖️';
+                if(textSpan) textSpan.textContent = 'Exit';
+                toggleFullscreenButton.title = 'Exit Fullscreen Preview';
+            } else {
+                document.body.classList.remove('preview-fullscreen');
+                if(iconSpan) iconSpan.textContent = '🖼️';
+                if(textSpan) textSpan.textContent = 'Fullscreen';
+                toggleFullscreenButton.title = 'Toggle Fullscreen Preview';
+            }
+             // Ensure preview updates if its content depends on viewport size (rare for pure CSS anim)
+            updatePreview();
+        }
+
+        toggleFullscreenButton.addEventListener('click', () => {
+            setPreviewFullscreen(!document.body.classList.contains('preview-fullscreen'));
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && document.body.classList.contains('preview-fullscreen')) {
+                setPreviewFullscreen(false);
+            }
+        });
+
+
+        // --- Built-in Examples ---
+        const builtInExamples = [ 
+            {
+                id: "example-bouncing-ball",
+                name: "Bouncing Element",
+                html: `<div class="bouncy-element">BOUNCE</div>`,
+                css: `body { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 90vh; 
+    background-color: #eef2f7; 
+    margin: 0; 
+    overflow: hidden; 
+}
+.bouncy-element {
+  width: 100px; 
+  height: 100px;
+  background-color: var(--accent-color, #007aff); 
+  color: white;
+  font-weight: bold;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%; 
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+  animation: bounce-effect 2s infinite cubic-bezier(0.280, 0.840, 0.420, 1);
+}
+
+@keyframes bounce-effect {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-35px) scale(1.05);
+  }
+}`
+            },
+            {
+                id: "example-pulsing-button",
+                name: "Pulsing Button",
+                html: `<button class="pulse-button">Click Me!</button>`,
+                css: `body { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 90vh; 
+    background-color: #f0f0f0; 
+    margin: 0; 
+}
+.pulse-button {
+  padding: 12px 24px;
+  font-size: 1em;
+  color: white;
+  background-color: #34c759; 
+  border: none;
+  border-radius: 8px; 
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+  transition: background-color 0.3s ease;
+  animation: pulse-effect 1.8s infinite;
+}
+.pulse-button:hover {
+    background-color: #30b050;
+}
+
+@keyframes pulse-effect {
+  0% {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 12px rgba(52, 199, 89, 0);
+  }
+  100% {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
+  }
+}`
+            },
+            {
+                id: "example-spinning-loader",
+                name: "Activity Indicator",
+                html: `<div class="loader"></div>`,
+                css: `body { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 90vh; 
+    background-color: #e5e5ea; 
+    margin: 0; 
+}
+.loader {
+  border: 5px solid rgba(0,0,0,0.1); 
+  border-top: 5px solid #6c6c70; 
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin-effect 1s linear infinite;
+}
+
+@keyframes spin-effect {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}`
+            },
+            {
+                id: "example-text-focus",
+                name: "Text Reveal",
+                html: `<h1 class="focus-in-text">HELLO</h1>`,
+                css: `body { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 90vh; 
+    background-color: #000; 
+    margin: 0; 
+    overflow: hidden;
+}
+.focus-in-text {
+    font-family: var(--system-font); 
+    font-weight: 300; 
+    font-size: 6rem;
+    color: #fff;
+    letter-spacing: 0.5em; 
+    filter: blur(8px); 
+    opacity: 0; 
+    animation: focus-in-effect 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation-delay: 0.3s; 
+}
+
+@keyframes focus-in-effect {
+    0% {
+        letter-spacing: 0.5em;
+        filter: blur(8px);
+        opacity: 0;
+        transform: scale(1.1);
+    }
+    100% {
+        letter-spacing: 0; 
+        filter: blur(0);
+        opacity: 1;
+        transform: scale(1);
+    }
+}`
+            }
+        ];
+
+
+        // --- Initial Load ---
+        function initializeApp() {
+            // Set current year in footer
+            if(currentYearSpan) {
+                currentYearSpan.textContent = new Date().getFullYear();
+            }
+
+            // Load and apply theme
+            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                applyTheme('dark');
+            } else {
+                applyTheme('light');
+            }
+
+            // Populate presets
+            let presets = getPresets();
+            if (presets.length === 0) { 
+                const defaultExamples = JSON.parse(JSON.stringify(builtInExamples)); 
+                defaultExamples.forEach(ex => {
+                    if (!presets.some(p => p.id === ex.id)) {
+                        presets.push(ex);
+                    }
+                });
+                savePresets(presets); 
+            } else {
+                populatePresetDropdown(); 
+            }
+            
+            // Load last content or first example
+            const lastContentJson = localStorage.getItem(LAST_CONTENT_STORAGE_KEY);
+            let initialHtml = '';
+            let initialCss = '';
+            let initialName = ''; 
+            let initialPresetId = '';
+
+            if (lastContentJson) {
+                const lastContent = JSON.parse(lastContentJson);
+                initialHtml = lastContent.html;
+                initialCss = lastContent.css;
+                const matchingPreset = getPresets().find(p => p.html === initialHtml && p.css === initialCss);
+                if (matchingPreset) {
+                    initialName = matchingPreset.name;
+                    initialPresetId = matchingPreset.id;
+                }
+            } else {
+                presets = getPresets(); 
+                if (presets.length > 0) {
+                    initialHtml = presets[0].html;
+                    initialCss = presets[0].css;
+                    initialName = presets[0].name;
+                    initialPresetId = presets[0].id;
+                }
+            }
+            
+            htmlEditor.value = initialHtml;
+            cssEditor.value = initialCss;
+            presetNameInput.value = initialName;
+            if(initialPresetId) loadPresetSelect.value = initialPresetId;
+            else if (loadPresetSelect.options.length > 0) loadPresetSelect.selectedIndex = 0;
+            
+            updatePreview(); 
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+</html>

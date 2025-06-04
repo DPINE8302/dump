@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            background-color: #1E1E1E; /* A common dark terminal background */
+            color: #D4D4D4; /* Common terminal text color */
+            overflow: hidden; /* Prevent body scroll, terminal will handle its own */
+        }
+
+        .terminal-output-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-output-container::-webkit-scrollbar-track {
+            background: #2D2D2D;
+        }
+        .terminal-output-container::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+        .terminal-output-container::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+        .terminal-output-container {
+            scrollbar-width: thin;
+            scrollbar-color: #555 #2D2D2D;
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: inherit;
+            width: 100%;
+            caret-color: #D4D4D4; /* Or your chosen text color */
+        }
+
+        .blinking-cursor {
+            font-weight: bold;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            from, to { color: transparent; }
+            50% { color: inherit; } /* Use parent's color */
+        }
+
+        /* Example text colors */
+        .text-green-glow { color: #39FF14; text-shadow: 0 0 5px #39FF14; }
+        .text-amber-glow { color: #FFBF00; text-shadow: 0 0 5px #FFBF00; }
+        .text-white-glow { color: #FFFFFF; text-shadow: 0 0 5px #FFFFFF; }
+
+        /* You can change the default text color here if you don't like #D4D4D4 */
+        .default-text-color {
+             color: #4AF626; /* Example: Green text */
+             /* color: #FFBF00; */ /* Example: Amber text */
+             /* color: #FFFFFF; */ /* Example: White text */
+        }
+        .default-text-color .blinking-cursor {
+             color: #4AF626; /* Match cursor to text */
+        }
+        .default-text-color .terminal-input {
+             caret-color: #4AF626; /* Match caret to text */
+        }
+    </style>
+</head>
+<body class="bg-black default-text-color">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- CONFIGURATION ---
+        const PROMPT = "user@portfolio:~$";
+        const USERNAME = "GuestUser"; // You can customize this
+        const HOSTNAME = "DevSpace";   // You can customize this
+        const TYPING_SPEED = 30; // Milliseconds per character
+
+        // --- DATA ---
+        const aboutMeContent = `
+Hello! I'm [Your Name/Nickname], a passionate [Your Role - e.g., Full-Stack Developer, Creative Coder, etc.] 
+with a love for building innovative and user-friendly applications. I thrive on challenges 
+and enjoy exploring new technologies. My journey in tech has been driven by curiosity and a 
+desire to create meaningful digital experiences.
+
+When I'm not coding, I enjoy [Your Hobbies - e.g., photography, hiking, reading sci-fi].
+This portfolio is a showcase of my work and my creative spirit.
+Feel free to explore!
+        `.trim();
+
+        const projectsContent = [
+            { name: "Project Alpha", description: "A cutting-edge web application using React and Node.js. Solved complex data visualization challenges.", link: "#" },
+            { name: "Creative Suite Beta", description: "An interactive CLI tool for artists, built with Python. Features generative art algorithms.", link: "#" },
+            { name: "IoT Gadget Gamma", description: "A Raspberry Pi-based smart home device with custom firmware and a mobile companion app.", link: "#" },
+            { name: "Portfolio Terminal (This!)", description: "This very terminal-style portfolio, built with React and Tailwind CSS.", link: "https://github.com/your-repo-link-here" }
+        ];
+
+        const contactContent = {
+            email: "your.email@example.com",
+            linkedin: "https://linkedin.com/in/yourprofile",
+            github: "https://github.com/yourusername",
+            twitter: "https://twitter.com/yourusername"
+        };
+
+        // --- TYPEWRITER COMPONENT ---
+        function Typewriter({ text, speed = TYPING_SPEED, onFinished, isRawHtml = false }) {
+            const [displayText, setDisplayText] = useState("");
+            const currentIndex = useRef(0);
+            const currentTextRef = useRef(text); // To handle text prop changes
+
+            useEffect(() => {
+                currentTextRef.current = text; // Update ref if text prop changes
+                setDisplayText(""); // Reset display text
+                currentIndex.current = 0; // Reset index
+            }, [text]);
+
+            useEffect(() => {
+                if (currentIndex.current < currentTextRef.current.length) {
+                    const timer = setTimeout(() => {
+                        setDisplayText((prev) => prev + currentTextRef.current[currentIndex.current]);
+                        currentIndex.current += 1;
+                    }, speed);
+                    return () => clearTimeout(timer);
+                } else if (onFinished) {
+                    onFinished();
+                }
+            }, [displayText, speed, onFinished]);
+
+            if (isRawHtml) {
+                return <div dangerouslySetInnerHTML={{ __html: displayText }} />;
+            }
+            return <>{displayText.split('\n').map((line, i) => <div key={i}>{line}</div>)}</>;
+        }
+
+        // --- MAIN TERMINAL COMPONENT ---
+        function Terminal() {
+            const [history, setHistory] = useState([{ 
+                id: Date.now(), 
+                type: 'output', 
+                content: `Welcome to My Terminal Portfolio!
+Type 'help' to see available commands.
+---`,
+                isTyping: true 
+            }]);
+            const [inputValue, setInputValue] = useState("");
+            const [isTyping, setIsTyping] = useState(true); // Global typing state for outputs
+            const [commandHistory, setCommandHistory] = useState([]);
+            const [commandHistoryIndex, setCommandHistoryIndex] = useState(-1);
+
+            const inputRef = useRef(null);
+            const scrollRef = useRef(null);
+
+            const dynamicPrompt = `${USERNAME}@${HOSTNAME}:~$`;
+
+            useEffect(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }
+            }, [history]);
+
+            useEffect(() => {
+                inputRef.current?.focus();
+            }, [isTyping]); // Refocus when typing finishes
+
+            const handleInputChange = (e) => {
+                setInputValue(e.target.value);
+            };
+
+            const handleCommandSubmit = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const command = inputValue.trim().toLowerCase();
+                    if (command === "") return;
+
+                    const newHistory = [...history, { id: Date.now(), type: 'input', content: `${dynamicPrompt} ${inputValue}` }];
+                    setInputValue("");
+                    setCommandHistory(prev => [inputValue, ...prev].slice(0, 20)); // Keep last 20 commands
+                    setCommandHistoryIndex(-1); // Reset history navigation
+
+                    processCommand(command, newHistory);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (commandHistory.length > 0) {
+                        const newIndex = Math.min(commandHistoryIndex + 1, commandHistory.length - 1);
+                        setCommandHistoryIndex(newIndex);
+                        setInputValue(commandHistory[newIndex] || "");
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (commandHistoryIndex > -1) {
+                        const newIndex = Math.max(commandHistoryIndex - 1, -1);
+                        setCommandHistoryIndex(newIndex);
+                        setInputValue(commandHistory[newIndex] || (newIndex === -1 ? "" : inputValue));
+                    }
+                }
+            };
+
+            const processCommand = (command, currentHistory) => {
+                let outputContent = "";
+                let isRawHtmlOutput = false;
+                setIsTyping(true); // Start typing animation for output
+
+                const [cmd, ...args] = command.split(/\s+/);
+
+                switch (cmd) {
+                    case 'help':
+                        outputContent = `Available commands:
+  help          Show this help message
+  about         Display information about me
+  projects      List my creative/tech work
+  photos        Show photo gallery (placeholder)
+  film          Show video projects (placeholder)
+  contact       Display contact information
+  gui           Switch to GUI mode (placeholder)
+  theme <color> Change terminal text color (green, amber, white)
+  clear         Clear the terminal screen
+  date          Show current date and time
+  echo <text>   Print text to terminal
+  whoami        Display current user`;
+                        break;
+                    case 'about':
+                        outputContent = aboutMeContent;
+                        break;
+                    case 'projects':
+                        outputContent = "My Projects:\n" + projectsContent.map(p => 
+                            `  - ${p.name}: ${p.description}` + (p.link !== "#" ? ` <a href="${p.link}" target="_blank" class="text-blue-400 hover:underline">[link]</a>` : "")
+                        ).join('\n');
+                        isRawHtmlOutput = true;
+                        break;
+                    case 'photos':
+                        outputContent = "Opening photo gallery...\n(This is a placeholder. In a real version, this might link to Flickr, Instagram, or a gallery page.)\nConsider: <a href='https://unsplash.com' target='_blank' class='text-blue-400 hover:underline'>Unsplash (Example Link)</a>";
+                        isRawHtmlOutput = true;
+                        break;
+                    case 'film':
+                        outputContent = "Accessing video projects...\n(Placeholder for Vimeo, YouTube, or embedded videos.)\nConsider: <a href='https://vimeo.com/discover' target='_blank' class='text-blue-400 hover:underline'>Vimeo Discover (Example Link)</a>";
+                        isRawHtmlOutput = true;
+                        break;
+                    case 'contact':
+                        outputContent = `Contact Information:
+  Email:    <a href="mailto:${contactContent.email}" class="text-blue-400 hover:underline">${contactContent.email}</a>
+  LinkedIn: <a href="${contactContent.linkedin}" target="_blank" class="text-blue-400 hover:underline">${contactContent.linkedin}</a>
+  GitHub:   <a href="${contactContent.github}" target="_blank" class="text-blue-400 hover:underline">${contactContent.github}</a>
+  Twitter:  <a href="${contactContent.twitter}" target="_blank" class="text-blue-400 hover:underline">${contactContent.twitter}</a> (if applicable)`;
+                        isRawHtmlOutput = true;
+                        break;
+                    case 'clear':
+                        setHistory([]);
+                        setIsTyping(false); // No output to type
+                        return; // Important to return early
+                    case 'gui':
+                        outputContent = "Switching to GUI mode... (Just kidding! This is a terminal. But one day... maybe.)\nTo exit this fantasy, type 'exit' if it were a real shell, or just use 'clear'.";
+                        break;
+                    case 'date':
+                        outputContent = new Date().toString();
+                        break;
+                    case 'echo':
+                        outputContent = args.join(" ");
+                        break;
+                    case 'whoami':
+                        outputContent = USERNAME;
+                        break;
+                    case 'theme':
+                        const color = args[0];
+                        const bodyClassList = document.body.classList;
+                        bodyClassList.remove('default-text-color', 'text-green-glow', 'text-amber-glow', 'text-white-glow');
+                        let themeMsg = `Theme changed.`;
+                        if (color === 'green') bodyClassList.add('text-green-glow');
+                        else if (color === 'amber') bodyClassList.add('text-amber-glow');
+                        else if (color === 'white') bodyClassList.add('text-white-glow');
+                        else {
+                            bodyClassList.add('default-text-color');
+                            themeMsg = `Unknown theme: ${color}. Valid themes: green, amber, white. Reverted to default.`;
+                        }
+                        outputContent = themeMsg;
+                        break;
+                    default:
+                        outputContent = `Command not found: ${cmd}. Type 'help' for a list of commands.`;
+                }
+                
+                setHistory([...currentHistory, { id: Date.now() + 1, type: 'output', content: outputContent, isTyping: true, isRawHtml: isRawHtmlOutput }]);
+            };
+
+            const handleTerminalClick = () => {
+                inputRef.current?.focus();
+            };
+
+            const onTypewriterFinish = (itemId) => {
+                setHistory(prevHistory => 
+                    prevHistory.map(item => 
+                        item.id === itemId ? { ...item, isTyping: false } : item
+                    )
+                );
+                // Check if this was the last item to finish typing
+                const stillTypingItems = history.filter(item => item.id !== itemId && item.isTyping && item.type === 'output');
+                if (stillTypingItems.length === 0) {
+                    setIsTyping(false);
+                }
+            };
+
+            // Determine if any output is currently being typed
+            const isAnyOutputTyping = history.some(item => item.type === 'output' && item.isTyping);
+
+
+            return (
+                <div 
+                    className="h-screen w-screen p-4 flex flex-col overflow-hidden"
+                    onClick={handleTerminalClick}
+                >
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto terminal-output-container pr-2">
+                        {history.map(item => (
+                            <div key={item.id} className="mb-1 whitespace-pre-wrap break-words">
+                                {item.type === 'input' ? (
+                                    <span>{item.content}</span>
+                                ) : (
+                                    item.isTyping ? (
+                                        <Typewriter 
+                                            text={item.content} 
+                                            onFinished={() => onTypewriterFinish(item.id)}
+                                            isRawHtml={item.isRawHtml}
+                                        />
+                                    ) : (
+                                        item.isRawHtml ? (
+                                            <div dangerouslySetInnerHTML={{ __html: item.content }} />
+                                        ) : (
+                                             item.content.split('\n').map((line, i) => <div key={i}>{line}</div>)
+                                        )
+                                    )
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    {!isAnyOutputTyping && (
+                         <div className="flex items-center mt-2 shrink-0">
+                            <span className="mr-2">{dynamicPrompt}</span>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyDown={handleCommandSubmit}
+                                className="terminal-input flex-grow"
+                                autoFocus
+                                spellCheck="false"
+                                autoComplete="off"
+                            />
+                            <span className="blinking-cursor">_</span>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Terminal />);
+    </script>
+</body>
+</html>

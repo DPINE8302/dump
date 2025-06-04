@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirati Rattanaporn - Terminal v1.3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg-main: #0b0b0b; --color-text-main: #f0f0f0; --color-bg-terminal: #131315;
+            --color-terminal-border: #3A3A3A; --color-terminal-prompt: #f0f0f0; --syntax-command-name: #e4b363; 
+            --syntax-title: #67e8f9; --syntax-keyword: #cba6f7; --syntax-string: #89d9a1;       
+            --syntax-punctuation: #777f8b; --syntax-comment: #6a737d; --syntax-error: #f87171;       
+            --syntax-ascii-art: #e4b363; --suggestion-text: #505050; --color-scrollbar-thumb: #4a4a4f;
+            --color-scrollbar-track: #252528; --wiki-bg: #ffffff; --wiki-text: #202122;
+            --wiki-border: #a2a9b1; --wiki-border-hover: #72777d; --wiki-bg-hover: #f8f9fa;
+        }
+        html { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; box-sizing: border-box; }
+        *, *:before, *:after { box-sizing: inherit; }
+        body {
+            font-family: 'DM Mono', monospace; background-color: var(--color-bg-main); color: var(--color-text-main);
+            margin: 0; min-height: 100vh; display: flex; flex-direction: column; font-size: 16px; padding: 2rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .page-header, .page-footer { display: flex; justify-content: space-between; align-items: center; width: 100%; flex-shrink: 0; padding-left: 0.5rem; padding-right: 0.5rem; }
+        .page-header { margin-bottom: 1.5rem; } .page-footer { margin-top: 1.5rem; }
+        .page-header .name, .page-footer .role, .page-footer .time { font-weight: 400; font-size: 0.95rem; }
+        .terminal-wrapper { display: flex; justify-content: center; align-items: center; flex-grow: 1; width: 100%; }
+        .terminal-container { background-color: var(--color-bg-terminal); border: 1px solid var(--color-terminal-border); transition: background-color 0.3s ease, border-color 0.3s ease; }
+        .terminal-input { background: transparent; border: none; outline: none; color: inherit; width: 100%; font-family: 'DM Mono', monospace; font-size: inherit; line-height: inherit; position: relative; z-index: 1; }
+        .terminal-input-suggestion { position: absolute; left: 0; top: 0; color: var(--suggestion-text); font-family: inherit; font-size: inherit; line-height: inherit; white-space: pre; z-index: 0; pointer-events: none; }
+        .terminal-output-container::-webkit-scrollbar { width: 6px; } .terminal-output-container::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
+        .terminal-output-container::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
+        .terminal-output-container::-webkit-scrollbar-thumb:hover { background: #5f5f66; }
+        .terminal-output-container { scrollbar-width: thin; scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track); }
+        .terminal-input-area { position: relative; display: flex; align-items: center; flex-grow: 1; }
+        .blinking-cursor { background-color: var(--color-text-main); animation: blink 1s step-end infinite; display: inline-block; width: 0.5em; height: 1em; margin-left: 0.1em; vertical-align: text-bottom; }
+        @keyframes blink { from, to { opacity: 0; } 50% { opacity: 1; } }
+        .input-line .prompt { color: var(--color-terminal-prompt); } .input-line .command-text { color: var(--syntax-command-name); } 
+        .output-line { white-space: pre-wrap; line-height: 1.4; } .output-line div { min-height: 1em; } 
+        .output-line .ascii-art { color: var(--syntax-ascii-art); line-height: 1.1; display: block; }
+        .matrix-line { color: #00ff00; line-height: 1.0; font-family: 'Courier New', Courier, monospace; white-space: pre; overflow: hidden; }
+        .s-cmd { color: var(--syntax-command-name); text-decoration: underline; } .s-title { color: var(--syntax-title); font-weight: 500; }
+        .s-keyword { color: var(--syntax-keyword); } .s-string { color: var(--syntax-string); }
+        .s-punct { color: var(--syntax-punctuation); } .s-comment { color: var(--syntax-comment); } .s-error { color: var(--syntax-error); }
+        .wikipedia-style-button {
+            position: fixed; right: 2rem; top: 50%; transform: translateY(-50%); background-color: var(--wiki-bg); color: var(--wiki-text);
+            border: 1px solid var(--wiki-border); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 20px; font-weight: 600; text-decoration: none; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+        .wikipedia-style-button:hover { background-color: var(--wiki-bg-hover); border-color: var(--wiki-border-hover); }
+    </style>
+</head>
+<body> 
+    <header class="page-header"><span class="name">Kirati Rattanaporn</span></header>
+    <div class="terminal-wrapper"><div id="root" class="w-full h-full flex justify-center items-center"></div></div>
+    <footer class="page-footer"><span class="role">technology and creative enthusiast</span><span class="time" id="clock"></span></footer>
+    <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="wikipedia-style-button">W</a>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PROMPT_SYMBOL_RAW = ">"; const PROMPT_SYMBOL_DISPLAY = `${PROMPT_SYMBOL_RAW} `; 
+        const GLOBAL_TYPING_SPEED = 0; const SECRET_COMMAND_TYPING_SPEED = 20;
+
+        const S = {
+            cmd: (text) => `<span class="s-cmd">${text}</span>`, title: (text) => `<span class="s-title">${text}</span>`,
+            keyword: (text) => `<span class="s-keyword">${text}</span>`, string: (text) => `<span class="s-string">${text}</span>`,
+            punct: (text) => `<span class="s-punct">${text}</span>`, comment: (text) => `<span class="s-comment">${text}</span>`,
+            error: (text) => `<span class="s-error">${text}</span>`, ascii: (text) => `<span class="ascii-art">${text}</span>`,
+            matrix: (text) => `<span class="matrix-line">${text}</span>`
+        };
+        const link = (text, href) => `<a href="${href}" target="_blank" rel="noopener noreferrer" class="s-cmd">${text}</a>`;
+
+        // All commands are still known for potential autocompletion, but help will be layered
+        const KNOWN_COMMANDS = [
+            'help', 'whoami', 'contact', 'interests', 'achievements', 'projects', 'clear', 
+            'credits', 'theme', 'cat resume.txt', 'secrets', // Core & Utility
+            'fortune', 'ascii', 'banana', 'coffee', 'hello', 'ls -a', 'matrix', 'reboot', 'sudo' // Fun/Secret
+        ];
+
+        const WIN_ASCII_ART = `\n${S.ascii(' __        ___       ')}\n${S.ascii(' \\ \\      / (_)_ __  ')}\n${S.ascii('  \\ \\ /\\ / /| | \'_ \\ ')}\n${S.ascii('   \\ V  V / | | | | |')}\n${S.ascii('    \\_/\\_/  |_|_| |_|')}\n`;
+        const FORTUNES = [
+            "An exciting opportunity lies ahead of you.", "You will be unusually successful in business.",
+            "Your creativity will lead to great things.", "A pleasant surprise is waiting for you.",
+            "Embrace the new, cherish the old.", "The journey of a thousand miles begins with a single keystroke.",
+            "Debug your life, compile your dreams.", "01000110 01101111 01110010 01110100 01110101 01101110 01100101 favors the bold.",
+            "There is no patch for human stupidity.", "Keep calm and code on.",
+            "Remember to clear your cache and cookies... and your mind.", "Ctrl+S your day before it crashes.",
+            "The best way to predict the future is to invent it. - Alan Kay"
+        ];
+        const BANANA_ART = [ "          .--.", "         /  .", "        / ./ ", "       /./' ", "      // /   ", "     // /    ", "    // /     ", " __// /__    ", "(__________)"];
+        const THEMES = {
+            dark: { /* ... Dark theme colors ... */
+                '--color-bg-main': '#0b0b0b', '--color-text-main': '#f0f0f0', '--color-bg-terminal': '#131315',
+                '--color-terminal-border': '#3A3A3A', '--color-terminal-prompt': '#f0f0f0', '--syntax-command-name': '#e4b363', 
+                '--syntax-title': '#67e8f9', '--syntax-keyword': '#cba6f7', '--syntax-string': '#89d9a1',       
+                '--syntax-punctuation': '#777f8b', '--syntax-comment': '#6a737d', '--syntax-error': '#f87171',       
+                '--syntax-ascii-art': '#e4b363', '--suggestion-text': '#505050', '--color-scrollbar-thumb': '#4a4a4f',
+                '--color-scrollbar-track': '#252528', '--wiki-bg': '#ffffff', '--wiki-text': '#202122',
+                '--wiki-border': '#a2a9b1', '--wiki-border-hover': '#72777d', '--wiki-bg-hover': '#f8f9fa',
+            },
+            hacker: { /* ... Hacker theme colors ... */
+                '--color-bg-main': '#000000', '--color-text-main': '#00ff00', '--color-bg-terminal': '#050505',
+                '--color-terminal-border': '#003300', '--color-terminal-prompt': '#00ff00', '--syntax-command-name': '#00cc00', 
+                '--syntax-title': '#33ff33', '--syntax-keyword': '#55ff55', '--syntax-string': '#22aa22',       
+                '--syntax-punctuation': '#009900', '--syntax-comment': '#007700', '--syntax-error': '#ff4444',       
+                '--syntax-ascii-art': '#00dd00', '--suggestion-text': '#005500', '--color-scrollbar-thumb': '#006600',
+                '--color-scrollbar-track': '#002200', '--wiki-bg': '#001100', '--wiki-text': '#00ff00',
+                '--wiki-border': '#005500', '--wiki-border-hover': '#007700', '--wiki-bg-hover': '#002200',
+            },
+            light: { /* ... Light theme colors ... */
+                '--color-bg-main': '#f4f4f4', '--color-text-main': '#222222', '--color-bg-terminal': '#ffffff',
+                '--color-terminal-border': '#cccccc', '--color-terminal-prompt': '#333333', '--syntax-command-name': '#d9480f', 
+                '--syntax-title': '#0b7285', '--syntax-keyword': '#862e9c', '--syntax-string': '#2f9e44',       
+                '--syntax-punctuation': '#555555', '--syntax-comment': '#888888', '--syntax-error': '#c92a2a',       
+                '--syntax-ascii-art': '#d9480f', '--suggestion-text': '#aaaaaa', '--color-scrollbar-thumb': '#bbbbbb',
+                '--color-scrollbar-track': '#dddddd', '--wiki-bg': '#eeeeee', '--wiki-text': '#111111',
+                '--wiki-border': '#bbbbbb', '--wiki-border-hover': '#999999', '--wiki-bg-hover': '#f0f0f0',
+            }
+        };
+        function applyTheme(themeName) {
+            const theme = THEMES[themeName] || THEMES.dark;
+            for (const variable in theme) document.documentElement.style.setProperty(variable, theme[variable]);
+            localStorage.setItem('terminalTheme', themeName);
+        }
+        function levenshteinDistance(a,b){const an=a?a.length:0,bn=b?b.length:0;if(an===0)return bn;if(bn===0)return an;const m=Array(bn+1);for(let i=0;i<=bn;++i)m[i]=[i];for(let j=0;j<=an;++j)m[0][j]=j;for(let i=1;i<=bn;++i)for(let j=1;j<=an;++j)m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);return m[bn][an]}
+
+        // --- UPDATED: Main Help Output ---
+        const TARGET_HELP_OUTPUT = `${S.title('Available commands')} ${S.punct('::')} 
+  ${S.cmd('help')}         ${S.punct('=>')} Show this help message
+  ${S.cmd('whoami')}       ${S.punct('=>')} Learn more about me
+  ${S.cmd('contact')}      ${S.punct('=>')} Get in touch
+  ${S.cmd('interests')}    ${S.punct('=>')} View my creative interests
+  ${S.cmd('achievements')} ${S.punct('=>')} See key achievements
+  ${S.cmd('projects')}     ${S.punct('=>')} Explore my projects and showcases
+  ${S.cmd('cat resume.txt')} ${S.punct('=>')} View my (mock) resume
+  ${S.cmd('credits')}      ${S.punct('=>')} View portfolio credits
+  ${S.cmd('theme')}        ${S.punct('=>')} Change terminal theme ${S.punct('(')}e.g., ${S.cmd('theme hacker')}${S.punct(')')}
+  ${S.cmd('secrets')}      ${S.punct('=>')} Reveal hidden commands and fun features
+  ${S.cmd('clear')}        ${S.punct('=>')} Clear the terminal screen ${S.punct('</>')}`;
+
+        // --- NEW: Secrets Help Output ---
+        const SECRETS_HELP_OUTPUT = `${S.title('Secret & Fun Commands')} ${S.punct('::')} 
+  ${S.cmd('fortune')}      ${S.punct('=>')} Read a random fortune cookie
+  ${S.cmd('ascii')}        ${S.punct('=>')} Display my ASCII art logo
+  ${S.cmd('banana')}       ${S.punct('=>')} Get a banana ${S.punct('(')}e.g., ${S.cmd('banana Hello!')}${S.punct(')')}
+  ${S.cmd('coffee')}       ${S.punct('=>')} Simulate brewing coffee
+  ${S.cmd('hello')}        ${S.punct('=>')} A friendly greeting
+  ${S.cmd('ls -a')}        ${S.punct('=>')} List some "hidden" files (joke)
+  ${S.cmd('matrix')}       ${S.punct('=>')} Enter the Matrix (briefly)
+  ${S.cmd('reboot')}       ${S.punct('=>')} Simulate a system reboot
+  ${S.cmd('sudo')}         ${S.punct('=>')} Try to get root access (joke)
+  ${S.comment('... and don\'t forget the Konami code!')} ${S.punct('</>')}`;
+        
+        const aboutMeOutput = `${WIN_ASCII_ART}\nHello, I'm ${S.keyword('Win (Kirati Rattanaporn)')}, a passionate technology and creative enthusiast from Bangkok, Thailand. \nCurrently in ${S.string('Grade 10')}, I have a strong interest in technology, astronomy, photography, and film. \nOver the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. \nMy goal is to transfer to ${S.string('SPSM School')} to study multimedia and later pursue a degree at ${S.string("Chulalongkorn University's Faculty of Communication Arts")}.\n${S.punct('(')}You can learn more about me on my ${link('Wikipedia page', 'https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn')}${S.punct(')')}.`;
+        const contactOutput = `${S.title('Contact Information')} ${S.punct('::')}\n  ${S.punct('-')} ${S.keyword('GitHub Profile')} ${S.punct(':')} ${link('DPINE8302', 'https://github.com/DPINE8302')} ${S.comment('(Primary Code Hub)')}\n  ${S.punct('-')} ${S.keyword('Instagram')} ${S.punct(':')} ${link('@Win.rn', 'https://www.instagram.com/Win.rn')}\n  ${S.punct('-')} ${S.keyword('Photography IG')} ${S.punct(':')} ${link('@Win.albums', 'https://www.instagram.com/Win.albums')}\n  ${S.punct('-')} ${S.keyword('YouTube')} ${S.punct(':')} ${link('My Channel', 'https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg')}\n  ${S.punct('-')} ${S.keyword('Wikipedia')} ${S.punct(':')} ${link('Biography', 'https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn')} ${S.punct('</>')}`;
+        const interestsOutput = `${S.title('Creative Interests')} ${S.punct('::')}\n  ${S.punct('/>')} ${S.keyword('Filmmaking')} ${S.punct(':')} ${S.string('Crafting stories and bringing visions to life through video.')}\n  ${S.punct('/>')} ${S.keyword('Technology')} ${S.punct(':')} ${S.string('Exploring new tech, coding, and building innovative projects like robotics & web apps.')}\n  ${S.punct('/>')} ${S.keyword('Photography')} ${S.punct(':')} ${S.string('Capturing moments, perspectives, and the beauty of the world.')}\n  ${S.punct('/>')} ${S.keyword('Astronomy')} ${S.punct(':')} ${S.string('Gazing at the cosmos and understanding our place in the universe.')} ${S.punct('</>')}`;
+        const achievementsOutput = `${S.title('Key Achievements')} ${S.punct('::')}\n  ${S.punct('-')} ${S.string('Multiple national gold medals in')} ${S.keyword('Robotics')} ${S.comment('(2022-2024)')}\n  ${S.punct('-')} ${S.string('Gold in')} ${S.keyword('Multi-Skills')} ${S.comment('(EP Open House 2024)')}\n  ${S.punct('-')} ${S.string('Silver in')} ${S.keyword('Regional English Contest')} ${S.comment('(2024)')}\n  ${S.punct('-')} ${S.string('Medals in')} ${S.keyword('Athletics (Sprints)')}\n\n${S.comment("(For a detailed list, see my Wikipedia page via 'whoami' or the 'W' button)")} ${S.punct('</>')}`;
+        const projectsOutput = `${S.title('Projects & Showcases')} ${S.punct('::')}\n\n  ${S.title('Interactive Web Apps & CLI')}\n    ${S.punct('->')} ${S.keyword('Devw-2.5')} ${S.comment('(Personal Hub & Advanced Terminal)')}\n       ${S.punct('  -')} ${S.string('Live:')} ${link('devw.space', 'https://devw.space')}\n       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/Devw-2.5.git')}\n    ${S.punct('->')} ${S.keyword('This Terminal Portfolio')} ${S.comment('(v1.3 - You are here!)')}\n       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/Personal-Terminal-Portfolio')} ${S.comment(' (Update if repo name differs!)')}\n\n  ${S.title('Games')}\n    ${S.punct('->')} ${S.keyword('Snakky Game')} ${S.comment('(Classic Snake Game Recreation)')}\n       ${S.punct('  -')} ${S.string('Play:')} ${link('Play Online', 'https://dpine8302.github.io/Snakky-Game/')}\n       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/Snakky-Game.git')}\n\n  ${S.title('Portfolio & Design Showcases')}\n    ${S.punct('->')} ${S.keyword('Draft Portfolio')} ${S.comment('(Early Portfolio Concept)')}\n       ${S.punct('  -')} ${S.string('View:')} ${link('Live Site', 'https://dpine8302.github.io/draft-port/')}\n       ${S.punct('  -')} ${S.string('Code:')} ${link('GitHub Repo', 'https://github.com/DPINE8302/draft-port.git')}\n\n  ${S.title('Video & Creative Content')}\n    ${S.punct('->')} ${S.keyword('Feature Video Concept')} ${S.punct(':')} ${link('Watch on YouTube', 'https://www.youtube.com/embed/BMhot-xCYmk')}\n    ${S.punct('->')} ${S.keyword('Channel Gallery')} ${S.comment('(Video Projects)')} ${S.punct(':')} ${link('View Channel', 'https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg')}\n    ${S.punct('->')} ${S.keyword('Photography Showcase')} ${S.punct(':')} ${link('@Win.albums on Instagram', 'https://www.instagram.com/Win.albums')}\n\n  ${S.comment("Explore more on my GitHub profile (see 'contact')")} ${S.punct('</>')}`;
+        const creditsOutput = `${S.title('Portfolio Credits')} ${S.punct('::')}\n  ${S.keyword('Concept & Development:')} Kirati Rattanaporn (Win)\n  ${S.keyword('Built with:')} React, Tailwind CSS, Babel\n  ${S.keyword('Font:')} DM Mono\n  ${S.keyword('Special Thanks:')} Coffee, Stack Overflow, and You!\n  ${S.punct('---')}\n  ${S.comment('This terminal portfolio is open source.')}\n  ${S.comment('Check out the code via the \'projects\' command.')} ${S.punct('</>')}`;
+        const KONAMI_CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'];
+        const KONAMI_REWARD = `${S.title('KONAMI CODE ACTIVATED!')}\n${S.ascii(`  .--""--.--""--.--""--.--""--.--""--.\n |  ${S.keyword('CHEAT MODE ENGAGED!')}                    |\n  .--""--.--""--.--""--.--""--.--""--.\n |  ${S.string('Infinite creativity unlocked!')}         |\n  .--""--.--""--.--""--.--""--.--""--.`)}\n${S.comment('Just kidding... or am I? Thanks for playing!')} ${S.punct('</>')}`;
+        const resumeOutputLines = [ S.title("Kirati 'Win' Rattanaporn - resume.txt"), S.punct("------------------------------------"), `${S.keyword("Objective:")} To leverage passion for technology, multimedia, and creative problem-solving...`, "", S.keyword("Current Status:"), `  ${S.punct('-')} ${S.string("Grade 10 Student...")}`, `  ${S.punct('-')} ${S.string("Aspiring Communication Arts Student...")}`, "", S.keyword("Key Skills:"), `  ${S.punct('>>')} ${S.string("Robotics:")} ...`, `  ${S.punct('>>')} ${S.string("Web Development:")} ...`, `  ${S.punct('>>')} ${S.string("Multimedia:")} ...`, "", S.keyword("Projects Highlights:"), `  ${S.punct('-')} ${S.cmd("Devw-2.5:")} ...`, `  ${S.punct('-')} ${S.cmd("This Terminal Portfolio:")} ...`, "", S.keyword("Interests:"), `  ${S.string("Filmmaking, Astrophotography, UI/UX Design, Emerging Technologies.")}`, "", `${S.comment("(For full details, please see 'whoami', 'projects', or my Wikipedia page.)")}`, S.punct("--- END OF FILE ---") ]; // Shortened for brevity here
+        const lsSecretsOutput = `${S.title("Directory listing for /home/win/")}\n  ${S.keyword("drwxr-xr-x")}  .\n  ${S.keyword("drwxr-xr-x")}  ..\n  ${S.keyword("-rw-------")}  .bash_history ${S.comment("# Standard stuff")}\n  ${S.keyword("drwx------")}  .config/\n  ${S.keyword("drwx------")}  .local/\n  ${S.keyword("drwxr-xr-x")}  ${S.string(".top_secret_banana_recipes")} ${S.comment("# Shhh!")}\n  ${S.keyword("-rw-r--r--")}  .my_master_plan.md ${S.comment("# World domination... eventually.")}\n  ${S.keyword("lrwxrwxrwx")}  .favorite_snack ${S.punct("->")} /dev/null ${S.comment("# Currently on a diet")}\n  ${S.keyword("-r--------")}  .embarrassing_photos_from_2012 ${S.error("(PERMISSION DENIED)")}\n  ${S.keyword("drwxr-xr-x")}  projects/\n  ${S.keyword("-rw-r--r--")}  resume.txt ${S.comment("# You found this already!")}\n${S.punct("</>")}`;
+
+        function Typewriter({ text, speed = GLOBAL_TYPING_SPEED, onFinished, isHtml = false, isMatrix = false }) {
+            const [displayText, setDisplayText] = useState("");
+            useEffect(() => {
+                if (speed === 0 || !text) { setDisplayText(text || ""); if (onFinished) onFinished(); return; }
+                let currentIdx = 0; setDisplayText(""); 
+                const intervalId = setInterval(() => {
+                    if (currentIdx < text.length) { setDisplayText(prev => prev + text[currentIdx]); currentIdx++; } 
+                    else { clearInterval(intervalId); if (onFinished) onFinished(); }
+                }, speed);
+                return () => clearInterval(intervalId);
+            }, [text, speed, onFinished]);
+            const content = isHtml ? (isMatrix ? <div className="matrix-line" dangerouslySetInnerHTML={{ __html: displayText }} /> : <div dangerouslySetInnerHTML={{ __html: displayText.replace(/\n/g, '<br/>') }} />) : displayText.split('\n').map((line, i) => <div key={i} className={isMatrix ? 'matrix-line' : ''}>{line || ' '}</div>);
+            return <div className={isMatrix ? '' : "output-line"}>{content}</div>;
+        }
+
+        function Terminal() {
+            const [history, setHistory] = useState([]);
+            const [inputValue, setInputValue] = useState("");
+            const [suggestion, setSuggestion] = useState("");
+            const [commandHistoryLog, setCommandHistoryLog] = useState([]);
+            const [commandHistoryIndex, setCommandHistoryIndex] = useState(-1);
+            const [isProcessing, setIsProcessing] = useState(false);
+
+            const inputRef = useRef(null); const scrollRef = useRef(null);
+
+            useEffect(() => { const savedTheme = localStorage.getItem('terminalTheme'); applyTheme((savedTheme && THEMES[savedTheme]) ? savedTheme : 'dark'); }, []);
+            useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [history]);
+            useEffect(() => { if (!history.some(item => item.type === 'output' && item.isTyping) && !isProcessing) inputRef.current?.focus(); }, [history, isProcessing]);
+
+            const updateSuggestion = (currentInput) => {
+                if (!currentInput) { setSuggestion(""); return; }
+                const typedCommandPart = currentInput.toLowerCase().split(/\s+/)[0]; 
+                const possibleCommands = KNOWN_COMMANDS.filter(cmd => cmd.startsWith(typedCommandPart));
+                if (possibleCommands.length === 1 && possibleCommands[0] !== typedCommandPart) {
+                    const args = currentInput.includes(' ') ? currentInput.substring(currentInput.indexOf(' ')) : '';
+                    setSuggestion(possibleCommands[0].substring(typedCommandPart.length) + args);
+                } else { setSuggestion(""); }
+            };
+            const handleInputChange = (e) => { const value = e.target.value; setInputValue(value); updateSuggestion(value); };
+            const handleKeyDown = (e) => {
+                if (isProcessing) { e.preventDefault(); return; }
+                if (e.key === 'Enter') {
+                    e.preventDefault(); let commandToProcess = inputValue.trim();
+                    if (commandToProcess === "" && history.length === 0) { commandToProcess = "help"; setInputValue("help"); }
+                    else if (commandToProcess === "") { setSuggestion(""); return; }
+                    processAndRecordCommand(commandToProcess); setSuggestion("");
+                } else if (e.key === 'Tab') { if (suggestion) { e.preventDefault(); setInputValue(inputValue.trim().split(/\s+/)[0] + suggestion); setSuggestion("");}
+                } else if (e.key === 'ArrowUp') { e.preventDefault(); if (commandHistoryLog.length > 0) { const newIndex = Math.min(commandHistoryIndex + 1, commandHistoryLog.length - 1); setCommandHistoryIndex(newIndex); const historicCmd = commandHistoryLog[newIndex] || ""; setInputValue(historicCmd); updateSuggestion(historicCmd); }}
+                else if (e.key === 'ArrowDown') { e.preventDefault(); if (commandHistoryIndex > -1) { const newIndex = Math.max(commandHistoryIndex - 1, -1); setCommandHistoryIndex(newIndex); const historicCmd = newIndex === -1 ? "" : (commandHistoryLog[newIndex] || ""); setInputValue(historicCmd); updateSuggestion(historicCmd); } else { setInputValue(""); setSuggestion("");} }
+            };
+            const processAndRecordCommand = (commandInput) => {
+                const newHistoryEntry = { id: Date.now(), type: 'input', content: `${PROMPT_SYMBOL_RAW}&nbsp;<span class="s-cmd">${commandInput.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`, isHtml: true };
+                setHistory(prev => [...prev, newHistoryEntry]); setInputValue(""); 
+                const newCommandLog = [commandInput.toLowerCase(), ...commandHistoryLog].slice(0, Math.max(20, KONAMI_CODE.length));
+                setCommandHistoryLog(newCommandLog); setCommandHistoryIndex(-1);
+                if (newCommandLog.length >= KONAMI_CODE.length) { const recentCommands = newCommandLog.slice(0, KONAMI_CODE.length).reverse(); if (JSON.stringify(recentCommands) === JSON.stringify(KONAMI_CODE)) { addOutputToHistory(KONAMI_REWARD); setCommandHistoryLog(prev => prev.slice(KONAMI_CODE.length)); }}
+                processCommandLogic(commandInput);
+            };
+            const addOutputToHistory = (outputContent, isHtmlOutput = true, speed = GLOBAL_TYPING_SPEED, isMatrix = false) => { 
+                 const newOutputEntry = { id: Date.now() + Math.random(), type: 'output', content: outputContent, isTyping: speed > 0, isHtml: isHtmlOutput, speed: speed, isMatrix: isMatrix };
+                setHistory(prev => [...prev, newOutputEntry]);
+            };
+            const addSequentialOutputs = async (outputs) => {
+                setIsProcessing(true);
+                for (const item of outputs) {
+                    await new Promise(resolve => {
+                        addOutputToHistory(item.content, item.isHtml !== false, item.speed !== undefined ? item.speed : GLOBAL_TYPING_SPEED, item.isMatrix);
+                        const typingDuration = item.speed > 0 ? (item.content.length * item.speed) : 0;
+                        setTimeout(resolve, typingDuration + (item.delay || 100));
+                    });
+                }
+                setIsProcessing(false);
+            };
+
+            const handleReboot = () => { const rebootMessages = [ { content: S.string('System reboot sequence initiated...'), speed: SECRET_COMMAND_TYPING_SPEED }, { content: S.comment('Unmounting file systems...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 300}, { content: S.comment('Disabling swap...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 300 }, { content: S.string('Rebooting...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 500 }, { content: `${S.punct('[ OK ]')} ${S.keyword('Reached target Shutdown.')}`, speed: SECRET_COMMAND_TYPING_SPEED }, { content: S.punct('...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 1000 }, { content: S.punct('KRNLBOOT v1.3 Initializing...'), speed: SECRET_COMMAND_TYPING_SPEED }, { content: `${S.string('Memory Test:')} ${S.keyword('PASS')}`, speed: SECRET_COMMAND_TYPING_SPEED }, { content: S.string('Loading Core Systems...'), speed: SECRET_COMMAND_TYPING_SPEED }, { content: WIN_ASCII_ART, speed: SECRET_COMMAND_TYPING_SPEED/2 }, { content: S.title('Welcome to Kirati Rattanaporn - Terminal v1.3'), speed: SECRET_COMMAND_TYPING_SPEED }, { content: `Type ${S.cmd('help')} for a list of commands.`, speed: SECRET_COMMAND_TYPING_SPEED } ]; setHistory([]); addSequentialOutputs(rebootMessages); };
+            const handleCoffee = () => { const coffeeSequence = [ { content: `☕ ${S.string('Brewing coffee...')}`, speed: SECRET_COMMAND_TYPING_SPEED }, { content: S.comment('Grinding beans...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 1000 }, { content: S.comment('Heating water to 93°C...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 1500 }, { content: S.comment('Pour over in progress...'), speed: SECRET_COMMAND_TYPING_SPEED, delay: 2000 }, { content: `${S.keyword('Coffee ready!')} ${S.string('Just kidding. You\'ll have to make your own. 😉')}`, speed: SECRET_COMMAND_TYPING_SPEED, delay: 500 } ]; addSequentialOutputs(coffeeSequence); };
+            const handleCatResume = () => { const resumeSequence = resumeOutputLines.map(line => ({ content: line, speed: SECRET_COMMAND_TYPING_SPEED / 2, delay: 50 })); addSequentialOutputs(resumeSequence); };
+            const handleMatrix = () => { const matrixIntro = [ { content: S.string("Wake up, Neo..."), speed: SECRET_COMMAND_TYPING_SPEED }, { content: S.comment("The Matrix has you..."), speed: SECRET_COMMAND_TYPING_SPEED, delay: 1000 }, { content: S.string("Follow the white rabbit."), speed: SECRET_COMMAND_TYPING_SPEED, delay: 1000 } ]; const matrixChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789唰扎克斯"; const generateMatrixLine = () => { let line = ""; for (let i = 0; i < 70; i++) line += matrixChars[Math.floor(Math.random() * matrixChars.length)]; return line; }; const matrixRainSequence = []; for (let i = 0; i < 30; i++) matrixRainSequence.push({ content: generateMatrixLine(), speed: 0, isMatrix: true, delay: 50 }); matrixRainSequence.push({ content: S.comment("...you are free."), speed: SECRET_COMMAND_TYPING_SPEED, delay: 500 }); addSequentialOutputs([...matrixIntro, ...matrixRainSequence]); };
+
+            const processCommandLogic = (commandInput) => {
+                let outputContent = ""; const parts = commandInput.toLowerCase().split(/\s+/);
+                const cmdToExecute = parts[0]; const arg1 = parts[1]; const fullArgs = parts.slice(1).join(" ");
+
+                // Core commands
+                if (cmdToExecute === 'help') { outputContent = TARGET_HELP_OUTPUT; }
+                else if (cmdToExecute === 'whoami') { outputContent = aboutMeOutput; }
+                else if (cmdToExecute === 'contact') { outputContent = contactOutput; }
+                else if (cmdToExecute === 'interests') { outputContent = interestsOutput; }
+                else if (cmdToExecute === 'achievements') { outputContent = achievementsOutput; }
+                else if (cmdToExecute === 'projects') { outputContent = projectsOutput; }
+                else if (cmdToExecute === 'clear') { setHistory([]); return; }
+                else if (cmdToExecute === 'credits') { outputContent = creditsOutput; }
+                else if (cmdToExecute === 'theme') { if (arg1 && THEMES[arg1]) { applyTheme(arg1); outputContent = `${S.string('Theme changed to:')} ${S.keyword(arg1)}`; }  else { outputContent = `${S.error('Invalid theme.')} Available: ${Object.keys(THEMES).map(t => S.cmd(t)).join(', ')}.`; } }
+                else if (cmdToExecute === 'cat' && arg1 === 'resume.txt') { handleCatResume(); return; }
+                else if (cmdToExecute === 'secrets') { outputContent = SECRETS_HELP_OUTPUT; } // New command for secret help
+                // Fun/Secret commands (can still be typed directly)
+                else if (cmdToExecute === 'fortune') { outputContent = `${S.keyword('Your fortune:')} ${S.string(FORTUNES[Math.floor(Math.random() * FORTUNES.length)])}`; }
+                else if (cmdToExecute === 'ascii') { outputContent = WIN_ASCII_ART; }
+                else if (cmdToExecute === 'reboot') { handleReboot(); return; }
+                else if (cmdToExecute === 'banana') { const message = commandInput.substring(cmdToExecute.length).trim(); const bananaLines = [...BANANA_ART]; if (message) { bananaLines[1] = `         /  .  ${S.punct('<')} ${S.string(message.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}`; bananaLines[2] = `        / ./ `; } outputContent = S.ascii(bananaLines.join('\n')); } 
+                else if (cmdToExecute === 'sudo') { outputContent = `${S.error("sudo: ")}${S.string("Permission denied for user 'guest'. This incident will be reported!")} ${S.comment("(Just kidding, you're not Kirati... or are you?)")}`; }
+                else if (cmdToExecute === 'coffee') { handleCoffee(); return; }
+                else if (cmdToExecute === 'ls' && arg1 === '-a') { outputContent = lsSecretsOutput; }
+                else if (cmdToExecute === 'matrix') { handleMatrix(); return; }
+                else if (cmdToExecute === 'hello') { outputContent = `${S.string("Hi there!")} You found a secret command! ${S.keyword("😊")}`; }
+                else { // Command not found
+                    let closestMatch = null; let minDistance = 3; 
+                    KNOWN_COMMANDS.forEach(knownCmd => { const dist = levenshteinDistance(cmdToExecute, knownCmd); if (dist < minDistance && dist < knownCmd.length / 1.5 && cmdToExecute.length > 1) { minDistance = dist; closestMatch = knownCmd; } });
+                    outputContent = `${S.error('Command not found:')} ${S.cmd(cmdToExecute.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}<br/>`;
+                    if (closestMatch) { outputContent += `Did you mean ${S.cmd(closestMatch)}? <br/>`; }
+                    outputContent += `Type ${S.cmd('help')} for available commands.`;
+                }
+                if (outputContent) { addOutputToHistory(outputContent); }
+            };
+
+            const handleTerminalClick = () => { if (!isProcessing) inputRef.current?.focus(); };
+            const onTypewriterFinish = (itemId) => { setHistory(prevHistory => prevHistory.map(item => item.id === itemId ? { ...item, isTyping: false } : item)); };
+            const isAnyOutputTyping = history.some(item => item.type === 'output' && item.isTyping);
+            let displaySuggestionText = ""; if(suggestion && inputValue) { const typedCommandPart = inputValue.split(" ")[0]; const remainingSuggestion = KNOWN_COMMANDS.find(cmd => cmd === typedCommandPart + suggestion); if(remainingSuggestion){ displaySuggestionText = suggestion; } }
+
+            return (
+                <div className="w-full terminal-container rounded p-3 md:p-4 flex flex-col overflow-hidden cursor-text" style={{ maxWidth: '860px', height: '480px', fontSize: '1rem' }} onClick={handleTerminalClick}>
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto terminal-output-container pr-1 space-y-0.5">
+                        {history.map(item => ( <div key={item.id}> {item.type === 'input' ? (<div className="input-line" dangerouslySetInnerHTML={{ __html: item.content }} /> ) : ( item.isTyping ? ( <Typewriter text={item.content} speed={item.speed} onFinished={() => onTypewriterFinish(item.id)} isHtml={item.isHtml} isMatrix={item.isMatrix} /> ) : ( <div className={item.isMatrix ? 'matrix-line' : "output-line"} dangerouslySetInnerHTML={{ __html: item.isMatrix ? item.content : item.content.replace(/\n/g, '<br/>') }} /> ) )} </div> ))}
+                    </div>
+                    <div className="flex items-center mt-1 shrink-0">
+                        <span className="mr-0.5 prompt" style={{color: "var(--color-terminal-prompt)"}}>{PROMPT_SYMBOL_DISPLAY}</span>
+                        <div className="terminal-input-area">
+                            <input ref={inputRef} type="text" value={inputValue} onChange={handleInputChange} onKeyDown={handleKeyDown} className="terminal-input" disabled={isAnyOutputTyping || isProcessing} autoFocus spellCheck="false" autoComplete="off" aria-label="Terminal input" />
+                            {displaySuggestionText && <span className="terminal-input-suggestion"><span style={{opacity: 0}}>{inputValue.trim().split(" ")[0]}</span>{displaySuggestionText}</span>}
+                        </div>
+                         {!(isAnyOutputTyping || isProcessing) && <span className="blinking-cursor"></span>}
+                    </div>
+                </div>);
+        }
+        function updateClock() { const clockElement = document.getElementById('clock'); if (clockElement) { const now = new Date(); const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); clockElement.textContent = timeString; }}
+        setInterval(updateClock, 1000); updateClock();
+        ReactDOM.createRoot(document.getElementById('root')).render(<Terminal />);
+    </script>
+</body>
+</html>

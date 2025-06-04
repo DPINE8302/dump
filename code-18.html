@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Earthquake & Tsunami Simulator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f4f4f4;
+            overflow: hidden;
+        }
+        #main-container { display: flex; width: 100%; height: 100%; }
+        #sidebar {
+            width: 320px; padding: 20px; background-color: #ffffff;
+            border-right: 1px solid #ddd; overflow-y: auto; box-sizing: border-box;
+            z-index: 1001; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        #sidebar h2 { margin-top: 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .control-group { margin-bottom: 25px; }
+        .control-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        .control-group input[type="range"] { width: 100%; cursor: pointer; }
+        .control-group small { display: block; margin-top: 5px; color: #777; font-size: 0.85em; }
+        #map-area { flex-grow: 1; position: relative; }
+        #map { height: 100%; width: 100%; background-color: #aadaff; }
+        #results-area h3 { margin-bottom: 10px; color: #444; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+        #city-impact-list { list-style-type: none; padding-left: 0; font-size: 0.9em; max-height: 300px; overflow-y: auto; }
+        #city-impact-list li {
+            margin-bottom: 5px; padding: 6px 8px; border-radius: 4px;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; border: 1px solid transparent;
+        }
+        #city-impact-list li.affected-critical { background-color: #ffdddd; border-color: #ffb8b8; color: #7c0000; font-weight: bold; }
+        #city-impact-list li.affected-major { background-color: #ffeeda; border-color: #ffccaa; color: #8c4600; }
+        #city-impact-list li.affected-moderate { background-color: #fffacc; border-color: #ffeb99; color: #665100; }
+        #city-impact-list li.safe { background-color: #e6ffe6; border-color: #c1f0c1; color: #004d00; }
+        .disclaimer { background-color: #fff3cd; color: #856404; padding: 10px; border: 1px solid #ffeeba; border-radius: 4px; font-size: 0.85em; margin-bottom: 20px; }
+        .disclaimer strong { display: block; margin-bottom: 5px; }
+        .epicenter-marker-icon {
+            background-color: rgba(220, 0, 0, 0.8); border-radius: 50%;
+            width: 16px; height: 16px; border: 3px solid white;
+            box-shadow: 0 0 0 3px rgba(220,0,0,0.7), 0 0 15px rgba(220,0,0,0.9);
+            animation: pulse-epicenter 1s infinite ease-out;
+        }
+        @keyframes pulse-epicenter {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 3px rgba(220,0,0,0.7), 0 0 15px rgba(220,0,0,0.9); }
+            50% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(220,0,0,0.3), 0 0 25px rgba(220,0,0,0.5); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 3px rgba(220,0,0,0.7), 0 0 15px rgba(220,0,0,0.9); }
+        }
+    </style>
+</head>
+<body>
+    <div id="main-container">
+        <div id="sidebar">
+            <h2>Dynamic Simulator</h2>
+            <div class="disclaimer">
+                <strong>IMPORTANT DISCLAIMER:</strong> This is a highly simplified visual simulation.
+                <strong>"Casualty Estimates" are NOT real predictions.</strong>
+            </div>
+            <div class="control-group">
+                <label for="magnitude-slider">Magnitude: <span id="magnitude-value">7.5</span> M</label>
+                <input type="range" id="magnitude-slider" min="6.0" max="9.5" step="0.1" value="7.5">
+            </div>
+            <div class="control-group">
+                <label for="depth-slider">Hypocenter Depth: <span id="depth-value">15</span> km</label>
+                <input type="range" id="depth-slider" min="5" max="300" step="1" value="15">
+                <small>Shallow quakes (&lt;70km) offshore are more tsunamigenic.</small>
+            </div>
+            <div class="control-group">
+                <label for="sim-speed-slider">Animation Speed: <span id="sim-speed-value">1.5</span>x</label>
+                <input type="range" id="sim-speed-slider" min="0.5" max="5.0" step="0.1" value="1.5">
+                <small>Adjusts how fast the wave animation plays.</small>
+            </div>
+            <div id="instructions"><p><strong>How to use:</strong><ol style="padding-left: 20px;"><li>Adjust parameters.</li><li>Click on a sea area.</li></ol></p></div>
+            <div id="results-area"><h3>Illustrative Casualty Estimates:</h3><ul id="city-impact-list"></ul></div>
+        </div>
+        <div id="map-area"><div id="map"></div></div>
+    </div>
+
+<script>
+    const magnitudeSlider = document.getElementById('magnitude-slider');
+    const magnitudeValueDisplay = document.getElementById('magnitude-value');
+    const depthSlider = document.getElementById('depth-slider');
+    const depthValueDisplay = document.getElementById('depth-value');
+    const simSpeedSlider = document.getElementById('sim-speed-slider');
+    const simSpeedValueDisplay = document.getElementById('sim-speed-value');
+    const cityImpactList = document.getElementById('city-impact-list');
+
+    let map;
+    let currentEpicenterMarker = null;
+    let activeWaveLayers = []; // Stores the visual ripple layers
+    let cityData = [];
+    let simulationSpeed = 1.5; // Default simulation speed
+
+    // Main animation loop ID
+    let mainLoopId = null;
+    let simulationSessionStartTime = null; // Real-world start time of the current simulation
+    let lastRippleSpawnSimTime = 0;    // Last simulation time a ripple was spawned
+
+    // Constants for ripple effect (BASE values are for 1x speed)
+    const RIPPLE_BASE_SPAWN_INTERVAL_MS = 80;  // How often a new ripple starts at 1x speed
+    const RIPPLE_BASE_DURATION_MS = 1000;      // How long a ripple animates at 1x speed
+    const RIPPLE_BASE_MAX_EXPANSION_M = 70000; // How far a single ripple expands at 1x speed
+
+    const cities = [
+        { name: "Bangkok", lat: 13.7563, lng: 100.5018, population: 10700000 },
+        { name: "Ho Chi Minh City", lat: 10.8231, lng: 106.6297, population: 9000000 },
+        { name: "Singapore", lat: 1.3521, lng: 103.8198, population: 5900000 },
+        { name: "Jakarta", lat: -6.2088, lng: 106.8456, population: 10500000 },
+        { name: "Kuala Lumpur", lat: 3.1390, lng: 101.6869, population: 1800000 },
+        { name: "Manila", lat: 14.5995, lng: 120.9842, population: 13500000 },
+        { name: "Hong Kong", lat: 22.3193, lng: 114.1694, population: 7500000 },
+        { name: "Surabaya", lat: -7.2575, lng: 112.7521, population: 2870000 },
+        { name: "Taipei", lat: 25.0330, lng: 121.5654, population: 2600000 },
+        { name: "Chongqing", lat: 29.4316, lng: 106.9123, population: 32000000}
+    ];
+
+    function initializeMap() {
+        map = L.map('map', { center: [7, 110], zoom: 5, worldCopyJump: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        cities.forEach(city => {
+            const marker = L.marker([city.lat, city.lng], { title: city.name })
+                .addTo(map).bindPopup(`<b>${city.name}</b><br>Pop: ${city.population.toLocaleString()}`);
+            const listItem = document.createElement('li');
+            listItem.textContent = `${city.name}: Awaiting simulation...`;
+            cityImpactList.appendChild(listItem);
+            cityData.push({ ...city, marker, listItem, impactedThisEvent: false });
+        });
+        map.on('click', handleMapClick);
+        // Set initial values from sliders
+        magnitudeValueDisplay.textContent = parseFloat(magnitudeSlider.value).toFixed(1);
+        depthValueDisplay.textContent = depthSlider.value;
+        simSpeedValueDisplay.textContent = parseFloat(simSpeedSlider.value).toFixed(1);
+        simulationSpeed = parseFloat(simSpeedSlider.value);
+
+    }
+    
+    magnitudeSlider.addEventListener('input', e => magnitudeValueDisplay.textContent = parseFloat(e.target.value).toFixed(1));
+    depthSlider.addEventListener('input', e => depthValueDisplay.textContent = e.target.value);
+    simSpeedSlider.addEventListener('input', e => {
+        simulationSpeed = parseFloat(e.target.value);
+        simSpeedValueDisplay.textContent = simulationSpeed.toFixed(1);
+    });
+
+    function handleMapClick(e) {
+        if (mainLoopId) { cancelAnimationFrame(mainLoopId); mainLoopId = null; }
+        activeWaveLayers.forEach(layer => { if(map.hasLayer(layer)) map.removeLayer(layer); });
+        activeWaveLayers = [];
+        if (currentEpicenterMarker) { map.removeLayer(currentEpicenterMarker); }
+
+        cityData.forEach(city => {
+            city.listItem.textContent = `${city.name}: Simulating...`;
+            city.listItem.className = '';
+            city.impactedThisEvent = false;
+        });
+
+        const epicenterLatlng = e.latlng;
+        const magnitude = parseFloat(magnitudeSlider.value);
+        const depth = parseInt(depthSlider.value);
+
+        const epicenterIcon = L.divIcon({ className: 'epicenter-marker-icon', iconSize: [16, 16] });
+        currentEpicenterMarker = L.marker(epicenterLatlng, { icon: epicenterIcon }).addTo(map)
+            .bindPopup(`<b>Epicenter</b><br>Mag: ${magnitude.toFixed(1)}M, Depth: ${depth}km`)
+            .openPopup();
+
+        startTsunamiEvent(epicenterLatlng, magnitude, depth);
+    }
+
+    function startTsunamiEvent(epicenterLatlng, magnitude, depth) {
+        simulationSessionStartTime = null; // Reset for new simulation
+        lastRippleSpawnSimTime = 0;
+
+        // --- Parameters for the overall tsunami event ---
+        const rawEnergyFactor = Math.pow(10, 0.8 * (magnitude - 6)); // Start scaling from Mag 6
+        const depthModifier = depth < 70 ? 1 : Math.max(0.1, 1 - (depth - 70) / 600);
+        // Max radius the conceptual tsunami front will reach (meters)
+        const maxOverallRadiusM = (30000 + (magnitude - 6) * 15000) * rawEnergyFactor * depthModifier;
+        // Speed of the conceptual tsunami front (meters per second)
+        const overallPropagationSpeedMPS = (150 + (magnitude - 6) * 60) * depthModifier;
+
+
+        function mainSimulationLoop(timestamp) {
+            if (!currentEpicenterMarker) { // Simulation was reset
+                activeWaveLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+                activeWaveLayers = [];
+                return;
+            }
+
+            if (!simulationSessionStartTime) simulationSessionStartTime = timestamp;
+            
+            const elapsedRealTime = timestamp - simulationSessionStartTime;
+            // Effective simulation time, advanced by simulationSpeed
+            const currentSimTimeMS = elapsedRealTime * simulationSpeed;
+
+            // Calculate current leading edge of the overall tsunami for impact calculation
+            const currentLeadingEdgeRadiusM = Math.min(maxOverallRadiusM, (currentSimTimeMS / 1000) * overallPropagationSpeedMPS);
+
+            updateCityImpacts(epicenterLatlng, currentLeadingEdgeRadiusM, magnitude, depth);
+
+            // Spawn visual ripples based on currentSimTime
+            const rippleSpawnInterval = RIPPLE_BASE_SPAWN_INTERVAL_MS / simulationSpeed;
+            if (currentSimTimeMS - lastRippleSpawnSimTime >= rippleSpawnInterval && currentLeadingEdgeRadiusM < maxOverallRadiusM) {
+                spawnVisualRipple(epicenterLatlng, magnitude);
+                lastRippleSpawnSimTime = currentSimTimeMS;
+            }
+
+            if (currentLeadingEdgeRadiusM < maxOverallRadiusM) {
+                mainLoopId = requestAnimationFrame(mainSimulationLoop);
+            } else {
+                finalizeImpacts();
+                mainLoopId = null; // Stop the loop
+                setTimeout(() => { // Final cleanup of any visual ripples
+                    activeWaveLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+                    activeWaveLayers = [];
+                }, (RIPPLE_BASE_DURATION_MS / simulationSpeed) + 500);
+            }
+        }
+        mainLoopId = requestAnimationFrame(mainSimulationLoop); // Start the simulation loop
+    }
+
+    function spawnVisualRipple(epicenterLatlng, magnitude) {
+        const ripple = L.circle(epicenterLatlng, {
+            radius: 0,
+            color: `rgba(0, 130, 220, ${0.4 + Math.min(0.4, (magnitude-6)*0.15)})`,
+            weight: 1 + Math.min(2, (magnitude - 6) * 0.4), // Thinner strokes overall
+            fill: false,
+            opacity: 0.5 + Math.min(0.3, (magnitude-6)*0.1),
+            interactive: false,
+            pane: 'shadowPane' // Render ripples behind markers
+        }).addTo(map);
+        activeWaveLayers.push(ripple);
+
+        const rippleAnimStartTime = performance.now(); // Use real time for this specific ripple's animation
+        const rippleAnimDuration = RIPPLE_BASE_DURATION_MS / simulationSpeed; // Duration scaled by sim speed
+        // Max expansion of this single ripple, also influenced by magnitude for visual oomph
+        const rippleMaxExpansion = RIPPLE_BASE_MAX_EXPANSION_M * (1 + (magnitude-7)/8) / simulationSpeed * 1.5;
+
+
+        function animateThisRipple(timestamp) {
+            if (!map.hasLayer(ripple) || !currentEpicenterMarker) { // Ripple removed or sim reset
+                activeWaveLayers = activeWaveLayers.filter(w => w !== ripple);
+                return;
+            }
+            const elapsed = timestamp - rippleAnimStartTime;
+            let progress = elapsed / rippleAnimDuration;
+            progress = Math.min(progress, 1);
+
+            ripple.setRadius(progress * rippleMaxExpansion);
+            // Fade out: initial opacity * (1 - progress^2) for a sharper fade towards the end
+            ripple.setStyle({ opacity: (0.5 + Math.min(0.3, (magnitude-6)*0.1)) * (1 - Math.pow(progress, 2)) });
+
+            if (progress < 1) {
+                requestAnimationFrame(animateThisRipple);
+            } else {
+                if (map.hasLayer(ripple)) map.removeLayer(ripple);
+                activeWaveLayers = activeWaveLayers.filter(w => w !== ripple);
+            }
+        }
+        requestAnimationFrame(animateThisRipple);
+    }
+    
+    function finalizeImpacts() {
+        cityData.forEach(city => {
+            if (!city.impactedThisEvent) { // If not impacted by any wave
+                city.listItem.textContent = `${city.name}: Safe`;
+                city.listItem.className = 'safe';
+            }
+        });
+    }
+
+    function updateCityImpacts(epicenterLatlng, currentWaveRadiusM, magnitude, depth) {
+        const baseTsunamiStrength = Math.pow(magnitude, 4.0) / 2000; // Increased exponent for magnitude
+        const depthFactor = depth < 30 ? 1.5 : (depth < 70 ? 1.0 : Math.max(0.1, (250 - depth) / 180));
+
+        cityData.forEach(city => {
+            if (city.impactedThisEvent) return; 
+
+            const cityLatlng = L.latLng(city.lat, city.lng);
+            const distanceToEpicenterM = epicenterLatlng.distanceTo(cityLatlng);
+
+            if (distanceToEpicenterM <= currentWaveRadiusM) {
+                city.impactedThisEvent = true;
+                const attenuation = Math.max(0.005, 1 / Math.pow((distanceToEpicenterM / 40000) + 1, 1.8)); // 40km unit
+                let rawImpact = baseTsunamiStrength * depthFactor * attenuation;
+                let affectedPercentage = 0;
+
+                if (rawImpact > 0.3) affectedPercentage = Math.min(0.25, rawImpact * 0.003);          // Max 25%
+                else if (rawImpact > 0.05) affectedPercentage = Math.min(0.08, rawImpact * 0.0015);  // Max 8%
+                else if (rawImpact > 0.005) affectedPercentage = Math.min(0.02, rawImpact * 0.001); // Max 2%
+                
+                let illustrativeCasualties = Math.floor(affectedPercentage * city.population);
+                if (affectedPercentage > 0 && illustrativeCasualties < 1) illustrativeCasualties = 1; // Show at least 1 if any impact
+                illustrativeCasualties = Math.min(illustrativeCasualties, Math.floor(city.population * 0.35)); // Hard cap
+
+                if (illustrativeCasualties > 0) {
+                    city.listItem.textContent = `${city.name}: ~${illustrativeCasualties.toLocaleString()} (Illustrative)`;
+                    if (illustrativeCasualties > city.population * 0.03) city.listItem.className = 'affected-critical';
+                    else if (illustrativeCasualties > city.population * 0.005) city.listItem.className = 'affected-major';
+                    else city.listItem.className = 'affected-moderate';
+                } else {
+                    city.listItem.textContent = `${city.name}: Minimal Impact`;
+                    city.listItem.className = 'safe';
+                }
+            }
+        });
+    }
+    // Initialize
+    initializeMap();
+</script>
+</body>
+</html>

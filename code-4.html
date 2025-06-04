@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows XP-ish Interactive</title>
+    <style>
+        /* XP-like Styles */
+        :root {
+            --xp-blue: #0058ad;
+            --xp-blue-gradient-start: #0050a0;
+            --xp-blue-gradient-end: #0078d7;
+            --xp-green-start: #57ae00;
+            --xp-green-end: #79d800;
+            --xp-button-face: #ece9d8;
+            --xp-button-shadow: #aca899;
+            --xp-button-highlight: #ffffff;
+            --xp-window-border: #0050a0;
+            --xp-window-background: #f0f0f0;
+            --xp-font: 'Tahoma', sans-serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--xp-font);
+            user-select: none; /* Prevent text selection on drag */
+        }
+
+        #desktop {
+            width: 100%;
+            height: 100%;
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/3/3d/Bliss_(location).jpg'); /* Famous Bliss wallpaper */
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .desktop-icon {
+            position: absolute;
+            width: 80px;
+            text-align: center;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .desktop-icon:hover {
+            background-color: rgba(0, 88, 173, 0.3);
+            border: 1px solid rgba(0, 88, 173, 0.5);
+        }
+        .desktop-icon img {
+            width: 48px;
+            height: 48px;
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+        #myComputerIcon { top: 20px; left: 20px; }
+        #notepadIcon { top: 120px; left: 20px; }
+        #aboutIcon { top: 220px; left: 20px; }
+
+
+        #taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to bottom, var(--xp-blue-gradient-start), var(--xp-blue-gradient-end));
+            border-top: 1px solid #003c77;
+            display: flex;
+            align-items: center;
+            padding: 0 5px;
+            box-sizing: border-box;
+            z-index: 10000; /* Above everything */
+        }
+
+        #startButton {
+            background: linear-gradient(to bottom, var(--xp-green-start), var(--xp-green-end));
+            border: 1px solid #468e00;
+            border-radius: 3px;
+            color: white;
+            font-weight: bold;
+            padding: 2px 10px 2px 25px;
+            cursor: pointer;
+            font-size: 14px;
+            text-shadow: 1px 1px 1px #3b7400;
+            position: relative;
+            margin-right: 10px;
+        }
+        #startButton::before { /* Windows logo approximation */
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%23F35325" d="M0 0h48v48H0z"/><path fill="%2381BC06" d="M52 0h48v48H52z"/><path fill="%2305A6F0" d="M0 52h48v48H0z"/><path fill="%23FFBA08" d="M52 52h48v48H52z"/></svg>');
+            background-size: contain;
+        }
+
+        #taskbarApps {
+            flex-grow: 1;
+            display: flex;
+            height: 100%;
+        }
+        .taskbar-button {
+            background-color: var(--xp-blue);
+            border: 1px outset var(--xp-button-face);
+            color: white;
+            padding: 0 10px;
+            margin: 2px 2px 0 2px; /* Top margin to not overlap taskbar border */
+            border-radius: 3px 3px 0 0;
+            font-size: 12px;
+            cursor: pointer;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 26px; /* Align text vertically */
+        }
+        .taskbar-button.active {
+            background-color: #004080;
+            border-style: inset;
+        }
+
+
+        #systemTray {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 5px;
+            background-color: #0072c6; /* Lighter blue for tray */
+            border-left: 1px solid #0050a0;
+        }
+        #clock {
+            color: white;
+            font-size: 12px;
+            padding: 0 5px;
+        }
+
+        #startMenu {
+            position: fixed;
+            bottom: 30px; /* Taskbar height */
+            left: 0;
+            width: 250px;
+            background: linear-gradient(to right, var(--xp-blue-gradient-start) 20%, var(--xp-blue-gradient-end) 100%);
+            border: 1px solid var(--xp-window-border);
+            border-bottom: none;
+            border-top-right-radius: 5px;
+            box-shadow: 3px -3px 5px rgba(0,0,0,0.3);
+            display: none; /* Hidden by default */
+            z-index: 9999;
+            color: white;
+        }
+        .start-menu-header {
+            background-color: var(--xp-blue-gradient-start);
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #003c77;
+        }
+        .start-menu-header img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: white; /* Placeholder avatar */
+        }
+        .start-menu-user { font-weight: bold; font-size: 16px; }
+
+        .start-menu-section {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .start-menu-section:last-child { border-bottom: none; }
+
+        .start-menu-item {
+            padding: 8px 15px 8px 30px; /* Space for icon */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            position: relative;
+        }
+        .start-menu-item:hover {
+            background-color: rgba(0, 120, 215, 0.7);
+        }
+        .start-menu-item img {
+            width: 20px; height: 20px;
+            position: absolute;
+            left: 5px; top: 50%;
+            transform: translateY(-50%);
+        }
+        .start-menu-separator {
+            height: 1px;
+            background-color: rgba(255,255,255,0.2);
+            margin: 5px 0;
+        }
+        .start-menu-footer {
+            background-color: var(--xp-blue-gradient-start);
+            padding: 5px;
+            text-align: right;
+            border-top: 1px solid #003c77;
+        }
+        .start-menu-footer button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .start-menu-footer button:hover {
+            background-color: rgba(0, 120, 215, 0.7);
+            border-radius: 3px;
+        }
+
+
+        .window {
+            position: absolute;
+            background-color: var(--xp-window-background);
+            border: 1px solid var(--xp-window-border);
+            box-shadow: 3px 3px 5px rgba(0,0,0,0.3);
+            border-radius: 5px 5px 0 0; /* Only top corners rounded */
+            display: none; /* Hidden by default */
+            min-width: 250px;
+            min-height: 150px;
+        }
+
+        .window-titlebar {
+            background: linear-gradient(to bottom, var(--xp-blue-gradient-end), var(--xp-blue-gradient-start));
+            color: white;
+            padding: 3px 8px;
+            font-weight: bold;
+            cursor: move;
+            height: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 4px; /* Match parent border radius */
+            border-top-right-radius: 4px;
+        }
+        .window-titlebar-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-grow: 1;
+        }
+
+        .window-controls button {
+            background-color: var(--xp-button-face);
+            border: 1px solid var(--xp-button-shadow);
+            color: black;
+            font-family: 'Webdings', 'Wingdings', sans-serif; /* For special characters */
+            font-size: 12px;
+            font-weight: bold;
+            width: 20px;
+            height: 18px;
+            padding: 0;
+            margin-left: 2px;
+            cursor: pointer;
+            line-height: 16px; /* Vertically center glyph */
+        }
+        .window-controls button:active { border-style: inset; }
+
+        .window-content {
+            padding: 10px;
+            height: calc(100% - 28px - 20px); /* titlebar height - padding */
+            overflow: auto;
+            background-color: white;
+        }
+        .window-content textarea {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            resize: none;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        /* Icon paths (simple placeholders, replace with better ones if you have them) */
+        .icon-my-computer { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234A90E2"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10zm-2-7h-3v2h3v-2zm-5 0H9v2h4v-2zM6 6h2v1H6V6z"/></svg>'); background-size: contain; }
+        .icon-notepad { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23777"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>'); background-size: contain; }
+        .icon-about { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFD700"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'); background-size: contain; }
+        .icon-folder { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFC107"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>'); background-size: contain; }
+        .icon-settings { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23607D8B"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>'); background-size: contain;}
+    </style>
+</head>
+<body>
+
+    <div id="desktop">
+        <!-- Desktop Icons -->
+        <div class="desktop-icon" id="myComputerIcon" data-window-id="myComputerWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='a' x1='29.76' x2='29.76' y1='6.89' y2='55.62' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%2369a1f7'/><stop offset='1' stop-color='%232465e0'/></linearGradient><linearGradient id='b' x1='32' x2='32' y1='20.05' y2='45.02' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='%23f0f0f0'/><stop offset='1' stop-color='%23d4d4d4'/></linearGradient></defs><rect width='49.19' height='38.07' x='7.4' y='12.96' fill='%233d7ef5' rx='3.12' ry='3.12'/><path fill='%232155c6' d='M55.08 13.25a2.81 2.81 0 012.51 2.81v31.86a2.81 2.81 0 01-2.51 2.81H10.42a2.81 2.81 0 01-2.5-2.81V16.06a2.81 2.81 0 012.5-2.81h44.66m0-1.5H10.42c-2.28 0-4 1.58-4 3.56v31.86c0 1.98 1.72 3.56 4 3.56h44.66c2.28 0 4-1.58 4-3.56V15.31c0-1.98-1.72-3.56-4-3.56z'/><rect width='46.47' height='35.37' x='8.76' y='14.31' fill='url(%23a)' rx='1.56' ry='1.56'/><path fill='%23fff' d='M11.65 46.66a.75.75 0 000 1.5h10.87a.75.75 0 000-1.5zm16.87 0a.75.75 0 000 1.5H40.4a.75.75 0 000-1.5zm-9.04-2.88a2.06 2.06 0 102.06 2.07 2.07 2.07 0 00-2.06-2.07zm9.04 0a2.06 2.06 0 102.06 2.07 2.07 2.07 0 00-2.06-2.07z'/><path d='M49.95 20H14.05a2 2 0 00-2 2v19a2 2 0 002 2h35.9a2 2 0 002-2V22a2 2 0 00-2-2z' fill='url(%23b)'/><path d='M17.4 26.12h4.58a.75.75 0 000-1.5H17.4a.75.75 0 000 1.5zm0 4.5h11.7a.75.75 0 000-1.5H17.4a.75.75 0 000 1.5zm0 4.5h8.78a.75.75 0 000-1.5h-8.78a.75.75 0 000 1.5z' fill='%23555'/></svg>" alt="My Computer">
+            My Computer
+        </div>
+        <div class="desktop-icon" id="notepadIcon" data-window-id="notepadWindow">
+             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACZUlEQVR4Ae1XA7bkIBDcbDvb2d7OdnbWszuQBCuQhMARCCSQQALJPhECn4F3d9ZkC7fSPqGZ3fXYX9PbJkP+VQow/PsG/57AL+BzQx+dAYhNXY7Y62rADW15ARBNUVR4eHgsDxNfHhwfHo7h4WGzP4CBgcH6fHx8PA0NDYn8+voaX19fL/MEAPL5vL6+vj2YnJxMS0tLbJbV1VWVlZWJzs7OxAFoaGgQj8fj7OzM6G8AcDgcDAYDxWJxfX09lJSUkE6nMzY2ZPcBAFVVKSkpDAwMGE0ABwcHtbW1yOVyKisrAwDk8/mBgYGsARARkclkvLy8yGazcnNzAwBJSUlEIhFzc3MBAL6+vmRzdpfV1dUVf39/LMsyOztLURRVVVWJRCI0Gr2yANTr9aysLBRFYY0nCALm5uYYDAYAlJaWEo/HLQBKpVJJSUmMx+OOjo5kUwDQarX09vayevqrFAPgOA6macLhcNi6uqoCuLi4QCqVMjIyYjabmZubo6CgQDKZBAAXFxcxFAoFAgGZTObk5IRkMkkwGLS0tHQsgNbWVkZHR5FIFYfDcXFxQXFxMYVCYWZmZhkxADk5ORgMhlqtJpvN2tvbi9VqZeWBeHiUb7VaCYVCotHokZERs9mMMQCKohKLxWSzWdzc3NDY2EhcXJzZARwOh62srEhkMpmbmxscHBxPnjA+Po7L5SIcDlNTU3NxcYHjOCoqqr/g+vo6vb29uFwuAHBxcUFmZuZiAQBCobCwsJDJZEQiEcVi0dvbi1Kp9PcBAAgEAqFQyMXFBQD09vbS2NiIVqsFAA4ODkQiEUNDQzQaDWdnZ2KxGF9fXy0LAPgDS6Jg2t+0D7QAAAAASUVORK5CYII=" alt="Notepad">
+            Notepad
+        </div>
+         <div class="desktop-icon" id="aboutIcon" data-window-id="aboutWindow">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%230078D7'><path d='M32 2C15.43 2 2 15.43 2 32s13.43 30 30 30 30-13.43 30-30S48.57 2 32 2zm0 54C18.75 56 8 45.25 8 32S18.75 8 32 8s24 10.75 24 24-10.75 24-24 24z'/><path fill='%23FFF' d='M30 18h4v4h-4zm0 8h4v18h-4z'/></svg>" alt="About">
+            About XP-ish
+        </div>
+
+        <!-- Windows -->
+        <div class="window" id="myComputerWindow" data-title="My Computer">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">My Computer</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button> <!-- Webdings: minimize -->
+                    <button class="maximize" data-char="1">1</button> <!-- Webdings: maximize -->
+                    <button class="close" data-char="r">r</button>    <!-- Webdings: close -->
+                </div>
+            </div>
+            <div class="window-content">
+                <p><strong>Files Stored on This Computer</strong></p>
+                <ul style="list-style-type: none; padding-left:0;">
+                    <li><span class="icon-folder" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:5px;"></span> Hard Disk Drive (C:)</li>
+                    <li><span class="icon-folder" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:5px;"></span> Shared Documents</li>
+                    <li><span class="icon-folder" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:5px;"></span> User's Documents</li>
+                </ul>
+                <hr>
+                <p><strong>Other Places</strong></p>
+                 <ul style="list-style-type: none; padding-left:0;">
+                    <li><span class="icon-folder" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:5px;"></span> My Network Places</li>
+                    <li><span class="icon-settings" style="display:inline-block; width:16px; height:16px; vertical-align:middle; margin-right:5px;"></span> Control Panel</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="window" id="notepadWindow" data-title="Untitled - Notepad" style="width:400px; height:300px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">Untitled - Notepad</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <textarea placeholder="Type something here..."></textarea>
+            </div>
+        </div>
+        
+        <div class="window" id="aboutWindow" data-title="About XP-ish" style="width:350px; height:220px;">
+            <div class="window-titlebar">
+                <span class="window-titlebar-title">About XP-ish</span>
+                <div class="window-controls">
+                    <button class="minimize" data-char="0">0</button>
+                    <button class="maximize" data-char="1">1</button>
+                    <button class="close" data-char="r">r</button>
+                </div>
+            </div>
+            <div class="window-content">
+                <h3>XP-ish Interactive Demo</h3>
+                <p>Created with HTML, CSS, and JavaScript in a single file.</p>
+                <p>This is a creative simulation inspired by Windows XP.</p>
+                <p>Features:</p>
+                <ul>
+                    <li>Draggable windows</li>
+                    <li>Minimize, Maximize (toggle), Close</li>
+                    <li>Start Menu (basic)</li>
+                    <li>Desktop Icons</li>
+                    <li>Taskbar Clock</li>
+                </ul>
+                <p>&copy; 2023 - A Fun Project</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="taskbar">
+        <button id="startButton">start</button>
+        <div id="taskbarApps">
+            <!-- Minimized app buttons will go here -->
+        </div>
+        <div id="systemTray">
+            <div id="clock"></div>
+        </div>
+    </div>
+
+    <div id="startMenu">
+        <div class="start-menu-header">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='%23DDD'/><path d='M32 10c-6.63 0-12 5.37-12 12s5.37 12 12 12 12-5.37 12-12-5.37-12-12-12zm0 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/><path d='M16 48c0-8.84 7.16-16 16-16s16 7.16 16 16z'/></svg>" alt="User Avatar">
+            <span class="start-menu-user">XP User</span>
+        </div>
+        <div class="start-menu-section">
+            <div class="start-menu-item" data-window-id="myComputerWindow">
+                <img class="icon-my-computer"> My Computer
+            </div>
+            <div class="start-menu-item" data-window-id="notepadWindow">
+                <img class="icon-notepad"> Notepad
+            </div>
+        </div>
+        <div class="start-menu-separator"></div>
+        <div class="start-menu-section">
+            <div class="start-menu-item" data-window-id="aboutWindow">
+                <img class="icon-about"> About XP-ish
+            </div>
+            <div class="start-menu-item">
+                <img class="icon-settings"> Control Panel (dummy)
+            </div>
+        </div>
+         <div class="start-menu-separator"></div>
+        <div class="start-menu-footer">
+            <button id="logOffButton">Log Off</button>
+            <button id="shutDownButton">Turn Off Computer</button>
+        </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const desktop = document.getElementById('desktop');
+        const taskbar = document.getElementById('taskbar');
+        const startButton = document.getElementById('startButton');
+        const startMenu = document.getElementById('startMenu');
+        const clockElement = document.getElementById('clock');
+        const windows = document.querySelectorAll('.window');
+        const desktopIcons = document.querySelectorAll('.desktop-icon');
+        const taskbarAppsContainer = document.getElementById('taskbarApps');
+
+        let highestZIndex = 100; // Start z-index for windows
+        let activeWindow = null;
+        const openWindows = {}; // To track open windows and their taskbar buttons
+
+        // --- Clock ---
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            clockElement.textContent = `${hours}:${minutes}`;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // --- Start Menu ---
+        startButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            startMenu.style.display = startMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!startMenu.contains(event.target) && event.target !== startButton) {
+                startMenu.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('logOffButton').addEventListener('click', () => alert('Logging off... (not really!)'));
+        document.getElementById('shutDownButton').addEventListener('click', () => alert('Shutting down... (not really!)'));
+
+
+        // --- Window Management ---
+        function bringToFront(windowElement) {
+            highestZIndex++;
+            windowElement.style.zIndex = highestZIndex;
+            
+            // Update active status for taskbar
+            if (activeWindow && openWindows[activeWindow.id]) {
+                openWindows[activeWindow.id].taskbarButton.classList.remove('active');
+            }
+            activeWindow = windowElement;
+            if (openWindows[activeWindow.id] && openWindows[activeWindow.id].taskbarButton) {
+                 openWindows[activeWindow.id].taskbarButton.classList.add('active');
+            }
+        }
+        
+        function openWindow(windowId, event) {
+            if (event) event.stopPropagation(); // Prevent desktop click if opened from icon
+            const windowElement = document.getElementById(windowId);
+            if (!windowElement) return;
+
+            if (windowElement.style.display === 'none' || windowElement.style.display === '') {
+                windowElement.style.display = 'block';
+                // Position windows somewhat centrally if they are new
+                if (!windowElement.style.top || !windowElement.style.left) {
+                    const desktopRect = desktop.getBoundingClientRect();
+                    const windowRect = windowElement.getBoundingClientRect();
+                    windowElement.style.top = `${(desktopRect.height - windowRect.height) / 2 - taskbar.offsetHeight}px`;
+                    windowElement.style.left = `${(desktopRect.width - windowRect.width) / 2}px`;
+                }
+                
+                if (!openWindows[windowId]) {
+                     createTaskbarButton(windowElement);
+                }
+            }
+            bringToFront(windowElement);
+            if (openWindows[windowId] && openWindows[windowId].taskbarButton) {
+                openWindows[windowId].taskbarButton.classList.add('active');
+                openWindows[windowId].minimized = false;
+            }
+            startMenu.style.display = 'none'; // Close start menu if an app is opened
+        }
+
+        function createTaskbarButton(windowElement) {
+            const button = document.createElement('button');
+            button.classList.add('taskbar-button');
+            button.textContent = windowElement.dataset.title || windowElement.id;
+            button.dataset.windowId = windowElement.id;
+            
+            button.addEventListener('click', () => {
+                const win = document.getElementById(button.dataset.windowId);
+                if (win.style.display === 'none' || openWindows[win.id].minimized) { // Minimized or hidden
+                    win.style.display = 'block';
+                    openWindows[win.id].minimized = false;
+                    bringToFront(win);
+                } else if (win === activeWindow) { // Active, so minimize it
+                    minimizeWindow(win);
+                } else { // Not active but visible, bring to front
+                    bringToFront(win);
+                }
+            });
+            
+            taskbarAppsContainer.appendChild(button);
+            openWindows[windowElement.id] = { element: windowElement, taskbarButton: button, minimized: false };
+        }
+
+        function removeTaskbarButton(windowId) {
+            if (openWindows[windowId] && openWindows[windowId].taskbarButton) {
+                openWindows[windowId].taskbarButton.remove();
+                delete openWindows[windowId];
+            }
+        }
+
+        function minimizeWindow(windowElement) {
+            windowElement.style.display = 'none';
+            if (openWindows[windowElement.id]) {
+                openWindows[windowElement.id].minimized = true;
+                if (openWindows[windowElement.id].taskbarButton) {
+                    openWindows[windowElement.id].taskbarButton.classList.remove('active');
+                }
+            }
+            // Find next highest visible window to activate
+            let nextActive = null;
+            let maxZ = -1;
+            windows.forEach(w => {
+                if (w.style.display !== 'none' && w !== windowElement) {
+                    const z = parseInt(w.style.zIndex || 0);
+                    if (z > maxZ) {
+                        maxZ = z;
+                        nextActive = w;
+                    }
+                }
+            });
+            if (nextActive) {
+                activeWindow = nextActive; // Set this before calling bringToFront
+                bringToFront(nextActive);
+            } else {
+                activeWindow = null;
+            }
+        }
+
+
+        windows.forEach(win => {
+            const titlebar = win.querySelector('.window-titlebar');
+            const closeButton = win.querySelector('.close');
+            const minimizeButton = win.querySelector('.minimize');
+            const maximizeButton = win.querySelector('.maximize');
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            // Store original dimensions for maximize toggle
+            win.dataset.originalWidth = win.style.width;
+            win.dataset.originalHeight = win.style.height;
+            win.dataset.originalTop = win.style.top;
+            win.dataset.originalLeft = win.style.left;
+            win.dataset.isMaximized = 'false';
+
+            titlebar.addEventListener('mousedown', (e) => {
+                // Prevent dragging if clicking on a control button
+                if (e.target.closest('.window-controls button')) return;
+                
+                isDragging = true;
+                offsetX = e.clientX - win.offsetLeft;
+                offsetY = e.clientY - win.offsetTop;
+                win.style.cursor = 'grabbing';
+                bringToFront(win);
+            });
+
+            win.addEventListener('mousedown', () => { // Click anywhere on window brings to front
+                bringToFront(win);
+            });
+
+            closeButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                win.style.display = 'none';
+                removeTaskbarButton(win.id);
+                if (activeWindow === win) activeWindow = null;
+            });
+
+            minimizeButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                minimizeWindow(win);
+            });
+            
+            maximizeButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const taskbarHeight = taskbar.offsetHeight;
+                if (win.dataset.isMaximized === 'false') {
+                    // Store current before maximizing
+                    win.dataset.originalWidth = win.style.width || win.offsetWidth + 'px';
+                    win.dataset.originalHeight = win.style.height || win.offsetHeight + 'px';
+                    win.dataset.originalTop = win.style.top || win.offsetTop + 'px';
+                    win.dataset.originalLeft = win.style.left || win.offsetLeft + 'px';
+
+                    win.style.width = '100%';
+                    win.style.height = `calc(100% - ${taskbarHeight}px)`;
+                    win.style.top = '0';
+                    win.style.left = '0';
+                    win.dataset.isMaximized = 'true';
+                    maximizeButton.setAttribute('data-char', '2'); // Webdings restore
+                } else {
+                    win.style.width = win.dataset.originalWidth;
+                    win.style.height = win.dataset.originalHeight;
+                    win.style.top = win.dataset.originalTop;
+                    win.style.left = win.dataset.originalLeft;
+                    win.dataset.isMaximized = 'false';
+                    maximizeButton.setAttribute('data-char', '1'); // Webdings maximize
+                }
+                bringToFront(win);
+            });
+
+
+            // Make sure Webdings characters are used for controls
+            win.querySelectorAll('.window-controls button').forEach(btn => {
+                btn.textContent = String.fromCharCode(parseInt(btn.dataset.char, 16) + 0x0030);
+                 if (btn.dataset.char === 'r') btn.textContent = 'r'; // Close is 'r'
+                 else if (btn.dataset.char === '0') btn.textContent = '0'; // Minimize
+                 else if (btn.dataset.char === '1') btn.textContent = '1'; // Maximize
+                 else if (btn.dataset.char === '2') btn.textContent = '2'; // Restore
+            });
+        
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                let newX = e.clientX - offsetX;
+                let newY = e.clientY - offsetY;
+
+                // Boundary checks (simple)
+                const desktopRect = desktop.getBoundingClientRect();
+                const taskbarHeight = taskbar.offsetHeight;
+
+                newX = Math.max(0, Math.min(newX, desktopRect.width - win.offsetWidth));
+                newY = Math.max(0, Math.min(newY, desktopRect.height - win.offsetHeight - taskbarHeight));
+                
+                win.style.left = `${newX}px`;
+                win.style.top = `${newY}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    win.style.cursor = 'move';
+                }
+            });
+        });
+
+        // --- Desktop Icons & Start Menu Items ---
+        desktopIcons.forEach(icon => {
+            icon.addEventListener('dblclick', () => { // Double click for desktop icons
+                const windowId = icon.dataset.windowId;
+                openWindow(windowId);
+            });
+            icon.addEventListener('click', (e) => { // Single click for selection (visual only for now)
+                e.stopPropagation();
+                desktopIcons.forEach(i => i.style.backgroundColor = 'transparent');
+                icon.style.backgroundColor = 'rgba(0, 88, 173, 0.5)';
+            });
+        });
+        
+        // Clear icon selection when clicking on desktop
+        desktop.addEventListener('click', () => {
+            desktopIcons.forEach(i => i.style.backgroundColor = 'transparent');
+            startMenu.style.display = 'none'; // Also close start menu on desktop click
+        });
+
+
+        document.querySelectorAll('.start-menu-item').forEach(item => {
+            const windowId = item.dataset.windowId;
+            if (windowId) { // Items that open windows
+                item.addEventListener('click', (event) => openWindow(windowId, event));
+            } else { // Dummy items
+                 item.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    alert(`'${item.textContent.trim()}' would open here.`);
+                    startMenu.style.display = 'none';
+                });
+            }
+        });
+
+        // Set initial positions for windows (example)
+        const myCompWin = document.getElementById('myComputerWindow');
+        myCompWin.style.top = '50px'; myCompWin.style.left = '150px';
+        const notepadWin = document.getElementById('notepadWindow');
+        notepadWin.style.top = '100px'; notepadWin.style.left = '250px';
+        const aboutWin = document.getElementById('aboutWindow');
+        aboutWin.style.top = '150px'; aboutWin.style.left = '350px';
+
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>macOS Style Portfolio - Conceptual Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Petite-Vue for light reactivity -->
+    <script src="https://unpkg.com/petite-vue" defer init></script>
+    <style>
+        /* Custom Scrollbar (Webkit only for demo) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Basic Window Drag (very simplified) */
+        .draggable {
+            cursor: grab;
+        }
+        .dragging {
+            cursor: grabbing;
+        }
+
+        /* Animations for window open/close */
+        .window-enter-active, .window-leave-active {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .window-enter-from, .window-leave-to {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+        }
+        .window-enter-to, .window-leave-from {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        /* Dock icon bounce */
+        .bounce {
+            animation: bounce 0.5s ease-out;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+    <script>
+        // Tailwind Dark Mode Config
+        tailwind.config = {
+            darkMode: 'class', // or 'media'
+            theme: {
+                extend: {
+                    colors: {
+                        'mac-bar': 'rgba(240, 240, 240, 0.8)', // Light mode bar
+                        'mac-bar-dark': 'rgba(40, 40, 40, 0.8)', // Dark mode bar
+                        'mac-dock': 'rgba(220, 220, 220, 0.7)',
+                        'mac-dock-dark': 'rgba(30, 30, 30, 0.7)',
+                        'mac-window': '#f9f9f9',
+                        'mac-window-dark': '#2d2d2d',
+                        'mac-window-header': '#e8e8e8',
+                        'mac-window-header-dark': '#3c3c3c',
+                        'mac-text': '#333',
+                        'mac-text-dark': '#ccc',
+                        'mac-icon-bg': 'rgba(255,255,255,0.2)',
+                        'mac-icon-bg-dark': 'rgba(0,0,0,0.2)',
+                    },
+                    fontFamily: {
+                        'sans': ['-apple-system', 'BlinkMacSystemFont', "Segoe UI", 'Roboto', "Helvetica Neue", 'Arial', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'window': '0 10px 30px rgba(0,0,0,0.1)',
+                        'dock': '0 -5px 20px rgba(0,0,0,0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-sans antialiased overflow-hidden h-screen bg-cover bg-center"
+      :class="{ 'dark': isDarkMode }"
+      style="background-image: url('https://source.unsplash.com/random/1920x1080/?macos,wallpaper,nature');"
+      v-scope="{
+        isDarkMode: false,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        windows: [], // { id, title, content, x, y, z, width, height, isOpen, isMinimized }
+        nextZIndex: 10,
+        activeWindowId: null,
+        dockApps: [
+            { id: 'finder', name: 'Finder', icon: '📂', content: 'Finder content: Your files here...' },
+            { id: 'terminal', name: 'Terminal', icon: '🧑‍💻', content: 'Terminal: <br>> help<br>> ls<br>> theme light/dark' },
+            { id: 'safari', name: 'Safari', icon: '🌐', content: 'Safari: Your blog or web content here.' },
+            { id: 'photos', name: 'Photos', icon: '🖼️', content: 'Photos: Image gallery would go here.' },
+            { id: 'projects', name: 'Projects', icon: '🛠️', content: 'Projects: Project details...' },
+            { id: 'github', name: 'GitHub', icon: '🐙', content: 'GitHub: Link to your profile or repo list.' },
+        ],
+
+        toggleTheme() {
+            this.isDarkMode = !this.isDarkMode;
+            if (this.isDarkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        },
+        updateTime() {
+            this.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        },
+        openApp(appId) {
+            const appConfig = this.dockApps.find(app => app.id === appId);
+            if (!appConfig) return;
+
+            // Animate dock icon
+            const dockIconEl = document.getElementById(`dock-${appId}`);
+            if (dockIconEl) {
+                dockIconEl.classList.add('bounce');
+                setTimeout(() => dockIconEl.classList.remove('bounce'), 500);
+            }
+
+            let existingWindow = this.windows.find(w => w.id === appId);
+            if (existingWindow) {
+                existingWindow.isOpen = true;
+                existingWindow.isMinimized = false;
+                existingWindow.z = this.nextZIndex++;
+                this.activeWindowId = appId;
+            } else {
+                this.windows.push({
+                    id: appId,
+                    title: appConfig.name,
+                    content: appConfig.content,
+                    x: Math.random() * (window.innerWidth / 2 - 150) + 50, // Random initial position
+                    y: Math.random() * (window.innerHeight / 2 - 200) + 50,
+                    width: 500,
+                    height: 350,
+                    z: this.nextZIndex++,
+                    isOpen: true,
+                    isMinimized: false,
+                    isDragging: false,
+                    dragStartX: 0,
+                    dragStartY: 0
+                });
+                this.activeWindowId = appId;
+            }
+        },
+        closeWindow(windowId) {
+            const win = this.windows.find(w => w.id === windowId);
+            if (win) win.isOpen = false;
+            if (this.activeWindowId === windowId) this.activeWindowId = null;
+        },
+        minimizeWindow(windowId) {
+            const win = this.windows.find(w => w.id === windowId);
+            if (win) win.isMinimized = true;
+            // In a real app, you'd hide it and show an indicator in the dock
+        },
+        focusWindow(windowId) {
+            const win = this.windows.find(w => w.id === windowId);
+            if (win && this.activeWindowId !== windowId) {
+                win.z = this.nextZIndex++;
+                this.activeWindowId = windowId;
+            }
+        },
+        startDrag(event, windowId) {
+            const win = this.windows.find(w => w.id === windowId);
+            if (win) {
+                this.focusWindow(windowId);
+                win.isDragging = true;
+                // Get the mouse cursor position at startup:
+                win.dragStartX = event.clientX - win.x;
+                win.dragStartY = event.clientY - win.y;
+                document.addEventListener('mousemove', (e) => this.dragWindow(e, windowId));
+                document.addEventListener('mouseup', () => this.stopDrag(windowId));
+            }
+        },
+        dragWindow(event, windowId) {
+            const win = this.windows.find(w => w.id === windowId);
+            if (win && win.isDragging) {
+                event.preventDefault();
+                // Calculate the new cursor position:
+                win.x = event.clientX - win.dragStartX;
+                win.y = event.clientY - win.dragStartY;
+
+                // Constrain to viewport (basic)
+                win.x = Math.max(0, Math.min(win.x, window.innerWidth - win.width));
+                win.y = Math.max(0, Math.min(win.y, window.innerHeight - win.height - 60)); // -60 for dock
+            }
+        },
+        stopDrag(windowId) {
+            const win = this.windows.find(w => w.id === windowId);
+            if (win) {
+                win.isDragging = false;
+                document.removeEventListener('mousemove', (e) => this.dragWindow(e, windowId)); // Be careful with anonymous functions for removal
+                document.removeEventListener('mouseup', () => this.stopDrag(windowId));
+            }
+        },
+        mounted() { // Petite-Vue equivalent of onMounted
+            setInterval(this.updateTime, 1000);
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                this.toggleTheme(); // Set initial theme based on OS preference
+            }
+            // Auto open a welcome window
+            // this.openApp('terminal');
+        }
+    }">
+
+    <!-- Top Menu Bar -->
+    <div class="fixed top-0 left-0 right-0 h-[28px] bg-mac-bar dark:bg-mac-bar-dark backdrop-blur-md shadow-sm flex items-center px-4 text-sm z-50 select-none"
+         :class="{ 'bg-opacity-80 dark:bg-opacity-80': true }">
+        <div class="font-bold mr-6"></div>
+        <div class="font-semibold mr-4">Finder</div>
+        <div class="mr-4">File</div>
+        <div class="mr-4">Edit</div>
+        <div class="mr-4">View</div>
+        <div class="mr-4">Go</div>
+        <div class="mr-4">Window</div>
+        <div class="mr-4">Help</div>
+        <div class="ml-auto flex items-center space-x-3">
+            <button @click="toggleTheme()" class="focus:outline-none text-lg">
+                <span v-if="isDarkMode">☀️</span>
+                <span v-else>🌙</span>
+            </button>
+            <div class="text-mac-text dark:text-mac-text-dark" v-text="time"></div>
+        </div>
+    </div>
+
+    <!-- Desktop Area: Windows will be rendered here -->
+    <div class="pt-[28px] h-full w-full relative">
+        <!-- Application Windows -->
+        <template v-for="win in windows" :key="win.id">
+            <div v-if="win.isOpen && !win.isMinimized"
+                 class="absolute bg-mac-window dark:bg-mac-window-dark rounded-lg shadow-window overflow-hidden border border-gray-300 dark:border-gray-700 flex flex-col"
+                 :style="{ top: win.y + 'px', left: win.x + 'px', zIndex: win.z, width: win.width + 'px', height: win.height + 'px' }"
+                 @mousedown="focusWindow(win.id)"
+                 v-show="win.isOpen"
+                 v-transition:window>
+                <!-- Window Header -->
+                <div @mousedown="startDrag($event, win.id)"
+                     class="h-7 bg-mac-window-header dark:bg-mac-window-header-dark flex items-center px-2 select-none draggable"
+                     :class="{ 'dragging': win.isDragging }">
+                    <div class="flex space-x-1.5 mr-2">
+                        <button @click.stop="closeWindow(win.id)" class="w-3 h-3 bg-red-500 rounded-full focus:outline-none hover:bg-red-600"></button>
+                        <button @click.stop="minimizeWindow(win.id)" class="w-3 h-3 bg-yellow-400 rounded-full focus:outline-none hover:bg-yellow-500"></button>
+                        <button class="w-3 h-3 bg-green-500 rounded-full focus:outline-none hover:bg-green-600"></button> <!-- Maximize not implemented -->
+                    </div>
+                    <span class="text-xs font-medium text-mac-text dark:text-mac-text-dark truncate" v-text="win.title"></span>
+                </div>
+                <!-- Window Content -->
+                <div class="p-4 flex-grow overflow-auto text-mac-text dark:text-mac-text-dark text-sm" v-html="win.content">
+                    <!-- App specific content will go here -->
+                </div>
+            </div>
+        </template>
+    </div>
+
+
+    <!-- Dock -->
+    <div class="fixed bottom-2 left-1/2 transform -translate-x-1/2 px-3 py-2
+                bg-mac-dock dark:bg-mac-dock-dark backdrop-blur-lg shadow-dock
+                rounded-xl flex items-end space-x-2 z-40"
+         :class="{ 'bg-opacity-70 dark:bg-opacity-70': true }">
+        <template v-for="app in dockApps" :key="app.id">
+            <button :id="'dock-' + app.id"
+                    @click="openApp(app.id)"
+                    class="group w-12 h-12 rounded-lg
+                           flex flex-col items-center justify-center
+                           transition-all duration-150 ease-out hover:scale-125 hover:-translate-y-2
+                           relative focus:outline-none">
+                <span class="text-3xl" v-text="app.icon"></span>
+                <span class="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5
+                             bg-gray-800 text-white text-xs rounded shadow-lg
+                             opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap"
+                      v-text="app.name"></span>
+                <!-- Active indicator dot -->
+                <div v-if="windows.find(w => w.id === app.id && w.isOpen && !w.isMinimized)"
+                     class="absolute bottom-0.5 w-1 h-1 bg-gray-700 dark:bg-gray-300 rounded-full"></div>
+            </button>
+        </template>
+    </div>
+
+</body>
+</html>

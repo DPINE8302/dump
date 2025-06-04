@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoes of Exploration</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap');
+
+        :root {
+            --primary-color: #0a0f1f; /* Deep space blue */
+            --secondary-color: #1a233f; /* Slightly lighter blue */
+            --accent-color: #00ffff; /* Cyan neon */
+            --text-color: #e0e0e0;
+            --glow-color: rgba(0, 255, 255, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            background-color: var(--secondary-color);
+            border-radius: 15px;
+            box-shadow: 0 0 30px var(--glow-color);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--glow-color);
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .viewport {
+            width: 100%;
+            max-width: 600px;
+            height: 400px; /* Adjust as needed */
+            background-color: #000;
+            border: 2px solid var(--accent-color);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: inset 0 0 15px var(--glow-color);
+        }
+
+        .viewport-content {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+        }
+        
+        .astronaut-overlay {
+            position: absolute;
+            width: 60%; /* Adjust based on your base image */
+            left: 5%;
+            bottom: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            pointer-events: none; /* So it doesn't interfere with hidden feature click */
+        }
+
+        .visor-reflection {
+            position: absolute;
+            /* These values need to be precisely tuned to your astronaut image's visor area */
+            width: 80px; 
+            height: 60px;
+            left: 200px; /* Example: Tune this */
+            top: 150px;  /* Example: Tune this */
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border-radius: 40% / 50%; /* Approximate visor curve */
+            transform: perspective(100px) rotateY(15deg) rotateX(5deg); /* Example: Tune this */
+            opacity: 0.7;
+            transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+        
+        .timeline-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .timeline-slider {
+            width: 80%;
+            max-width: 500px;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            background: var(--primary-color);
+            outline: none;
+            border-radius: 5px;
+            border: 1px solid var(--accent-color);
+            cursor: pointer;
+        }
+
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--glow-color);
+        }
+
+        .timeline-slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px var(--glow-color);
+        }
+
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 85%;
+            max-width: 530px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .timeline-labels span {
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+        .timeline-labels span.active {
+            color: var(--accent-color);
+            text-shadow: 0 0 5px var(--glow-color);
+            font-weight: bold;
+        }
+
+        .info-panel {
+            width: 100%;
+            padding: 20px;
+            background-color: rgba(10, 15, 31, 0.5); /* primary-color with alpha */
+            border-radius: 8px;
+            border: 1px solid var(--accent-color);
+            min-height: 150px;
+        }
+
+        .info-panel h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .info-panel p {
+            font-size: 0.95em;
+            line-height: 1.6;
+            text-align: justify;
+        }
+
+        /* Hidden Feature: Anomaly */
+        .anomaly {
+            position: absolute;
+            width: 10px; /* Tiny */
+            height: 10px;
+            /* Position it subtly in the 1000yr background */
+            top: 25%; 
+            right: 15%;
+            background-color: rgba(200, 200, 255, 0.3); /* Faint shimmer */
+            border-radius: 50%;
+            cursor: pointer;
+            display: none; /* Hidden by default */
+            animation: pulse 2s infinite ease-in-out;
+            box-shadow: 0 0 5px rgba(200, 200, 255, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.5; }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--secondary-color);
+            margin: auto;
+            padding: 30px;
+            border: 1px solid var(--accent-color);
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 20px var(--glow-color);
+        }
+
+        .modal-content p {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .close-button {
+            color: var(--accent-color);
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: var(--text-color);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Simplified SVG for Astronauts - ideally these would be more detailed */
+        .astronaut-svg {
+            width: 100%;
+            height: auto; /* Maintain aspect ratio */
+            filter: drop-shadow(0px 0px 5px var(--glow-color));
+        }
+        
+        /* For initial image version */
+        #astronaut-img-element {
+             width: 60%; /* Adjust based on your base image */
+            position: absolute;
+            left: 5%;
+            bottom: 0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Echoes of Exploration</h1>
+
+        <div class="viewport">
+            <div id="viewport-content" class="viewport-content">
+                <!-- Astronaut will be an img tag initially, then can be replaced or overlaid by SVGs -->
+                <img id="astronaut-img-element" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDA... (VERY LONG BASE64 STRING OF YOUR ORIGINAL IMAGE HERE. I will truncate it for brevity. You need to convert your image to Base64 and paste it fully) ...AqIgCAIAAqIgCAIAAqIgCAIAAqIgCAJ//Z" alt="Astronaut">
+                <!-- <div id="astronaut-svg-container"> SVG will go here </div> -->
+                <div id="visor-reflection" class="visor-reflection"></div>
+                <div id="anomaly" class="anomaly"></div>
+            </div>
+        </div>
+
+        <div class="timeline-container">
+            <input type="range" min="0" max="3" value="0" class="timeline-slider" id="timelineSlider">
+            <div class="timeline-labels" id="timelineLabels">
+                <span data-value="0" class="active">Present</span>
+                <span data-value="1">+10 Yrs</span>
+                <span data-value="2">+100 Yrs</span>
+                <span data-value="3">+1000 Yrs</span>
+            </div>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <h2>Present Day</h2>
+            <p>An astronaut on a spacewalk, likely in Low Earth Orbit. The suit is a modern Extravehicular Mobility Unit (EMU). The starfield is vast and unchanging to the naked eye over short human timescales. The reflection in the visor shows part of a spacecraft or station.</p>
+        </div>
+    </div>
+
+    <div id="anomalyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeModalButton">&times;</span>
+            <p id="anomalyMessage">A faint signal... a pattern... We are not alone, or perhaps, we are not the first.</p>
+        </div>
+    </div>
+
+    <!-- Embedded SVGs (Simplified Examples) -->
+    <svg width="0" height="0" style="position:absolute;">
+        <defs>
+            <g id="astronaut-10yrs">
+                <circle cx="50" cy="30" r="20" fill="#cccccc"/> <!-- Helmet -->
+                <rect x="30" y="50" width="40" height="60" fill="#e0e0e0"/> <!-- Body -->
+                <rect x="10" y="55" width="20" height="40" fill="#d0d0d0"/> <!-- Arm L -->
+                <rect x="70" y="55" width="20" height="40" fill="#d0d0d0"/> <!-- Arm R -->
+                <rect x="40" y="20" width="20" height="10" fill="#b0b0b0"/> <!-- Visor area placeholder -->
+                <text x="45" y="70" font-family="Arial" font-size="10" fill="#111">10Y</text>
+            </g>
+            <g id="astronaut-100yrs">
+                <ellipse cx="50" cy="30" rx="22" ry="20" fill="#silver"/> <!-- Sleeker Helmet -->
+                <path d="M30,50 Q50,45 70,50 L75,110 Q50,120 25,110 Z" fill="#f0f0f0"/> <!-- Sleeker Body -->
+                <ellipse cx="20" cy="70" rx="10" ry="25" fill="#e0e0e0"/> <!-- Arm L -->
+                <ellipse cx="80" cy="70" rx="10" ry="25" fill="#e0e0e0"/> <!-- Arm R -->
+                <rect x="38" y="18" width="24" height="12" fill="#777" rx="3"/> <!-- Integrated Visor -->
+                <line x1="50" y1="55" x2="50" y2="85" stroke="#00ffff" stroke-width="2"/> <!-- Energy line accent -->
+                <text x="40" y="75" font-family="Arial" font-size="10" fill="#111">100Y</text>
+            </g>
+            <g id="astronaut-1000yrs">
+                 <!-- More abstract/energy based -->
+                <path d="M50,10 C20,30 20,90 50,110 C80,90 80,30 50,10 Z" fill="rgba(0,200,255,0.3)" stroke="#00ffff" stroke-width="1.5"/>
+                <circle cx="50" cy="40" r="10" fill="#fff"/> <!-- Core/Head area -->
+                <animateTransform attributeName="transform" type="rotate" from="0 50 60" to="360 50 60" dur="10s" repeatCount="indefinite"/>
+                <text x="35" y="70" font-family="Arial" font-size="8" fill="#fff">1kYR</text>
+            </g>
+        </defs>
+    </svg>
+
+    <script>
+        const slider = document.getElementById('timelineSlider');
+        const labels = document.querySelectorAll('.timeline-labels span');
+        const infoPanel = document.getElementById('infoPanel');
+        const viewportContent = document.getElementById('viewport-content');
+        const astronautImgElement = document.getElementById('astronaut-img-element');
+        // const astronautSvgContainer = document.getElementById('astronaut-svg-container'); // If using SVG replacement
+        const visorReflection = document.getElementById('visor-reflection');
+        const anomalyElement = document.getElementById('anomaly');
+        const anomalyModal = document.getElementById('anomalyModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const anomalyMessage = document.getElementById('anomalyMessage');
+
+        // Store the original image Base64. Get it from the img tag.
+        const originalAstronautBase64 = astronautImgElement.src;
+
+        // Data for each timeline point
+        // Ideally, background and visor images would be preloaded or be complex SVGs
+        // For simplicity, using CSS background colors/gradients and placeholder text for image URLs
+        const timelineData = [
+            { // Present
+                year: "Present Day",
+                description: "An astronaut on a spacewalk, likely in Low Earth Orbit. The suit is a modern Extravehicular Mobility Unit (EMU). The starfield is vast. The reflection in the visor shows part of a spacecraft or station like the ISS.",
+                background: "url('https://images.pexels.com/photos/1252890/pexels-photo-1252890.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')", // Generic starfield
+                astronautType: "image", // "image" or "svg"
+                astronautSrc: originalAstronautBase64, // Path to original image or Base64
+                visorImage: "url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/International_Space_Station_after_undocking_of_STS-132.jpg/640px-International_Space_Station_after_undocking_of_STS-132.jpg')", // ISS reflection
+                showAnomaly: false
+            },
+            { // +10 Years
+                year: "+10 Years",
+                description: "Spacesuits are more streamlined (e.g., NASA's xEMU or commercial suits). Astronauts might be on commercial LEO stations or conducting Artemis missions near/on the Moon. The reflection shows a sleeker commercial station or the Lunar Gateway.",
+                background: "url('https://images.pexels.com/photos/1169754/pexels-photo-1169754.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')", // Starfield, maybe slight nebula
+                astronautType: "svg",
+                astronautSvgId: "astronaut-10yrs",
+                visorImage: "url('https://www.nasa.gov/wp-content/uploads/2023/05/gateway-rendering-050823.jpg')", // Lunar Gateway concept
+                showAnomaly: false
+            },
+            { // +100 Years
+                year: "+100 Years",
+                description: "Highly advanced, possibly lighter and more form-fitting suits with integrated AI and advanced life support. Permanent lunar bases or large orbital habitats are common. Star positions show slight proper motion. Reflection: A bustling lunar base or a large toroidal space station.",
+                background: "url('https://images.pexels.com/photos/2156/sky-earth-space-working.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')", // Starfield with visible planet/moon
+                astronautType: "svg",
+                astronautSvgId: "astronaut-100yrs",
+                visorImage: "url('https://www.universetoday.com/wp-content/uploads/2014/08/459361main_omegaclassVIEWMASTER.jpg')", // Torus station concept
+                showAnomaly: false
+            },
+            { // +1000 Years
+                year: "+1000 Years",
+                description: "Humanity might be interstellar. 'Suits' could be energy fields, nanotech ensembles, or biological adaptations. Views are of alien star systems or megastructures. Constellations are unrecognizable. Reflection: An alien landscape or the interior of a generation ship.",
+                background: "url('https://images.pexels.com/photos/220201/pexels-photo-220201.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')", // Deep space, nebula, distant galaxies
+                astronautType: "svg",
+                astronautSvgId: "astronaut-1000yrs",
+                visorImage: "url('https://i.ytimg.com/vi/G0ibYqI15nE/maxresdefault.jpg')", // Concept alien world
+                showAnomaly: true
+            }
+        ];
+
+        function updateContent(index) {
+            const data = timelineData[index];
+
+            // Update info panel
+            infoPanel.innerHTML = `<h2>${data.year}</h2><p>${data.description}</p>`;
+
+            // Update viewport background
+            viewportContent.style.backgroundImage = data.background;
+            
+            // Update astronaut
+            if (data.astronautType === "image") {
+                astronautImgElement.style.display = 'block';
+                // astronautSvgContainer.innerHTML = ''; // Clear SVGs if any
+                // astronautSvgContainer.style.display = 'none';
+                astronautImgElement.src = data.astronautSrc;
+
+                // Hide SVG astronaut elements if they were drawn directly into viewportContent
+                const existingSvgs = viewportContent.querySelectorAll('.astronaut-svg-in-viewport');
+                existingSvgs.forEach(svg => svg.remove());
+
+            } else if (data.astronautType === "svg") {
+                astronautImgElement.style.display = 'none';
+                // astronautSvgContainer.style.display = 'block';
+                
+                // Clear previous SVGs if any were drawn directly
+                const existingSvgs = viewportContent.querySelectorAll('.astronaut-svg-in-viewport');
+                existingSvgs.forEach(svg => svg.remove());
+
+                const svgNode = document.getElementById(data.astronautSvgId).cloneNode(true);
+                const svgWrapper = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svgWrapper.setAttribute('viewBox', '0 0 100 120'); // Adjust viewBox to content
+                svgWrapper.classList.add('astronaut-overlay', 'astronaut-svg-in-viewport'); // Use same class for positioning
+                svgWrapper.appendChild(svgNode);
+                viewportContent.appendChild(svgWrapper); // Add to viewport
+            }
+
+
+            // Update visor reflection
+            if (data.visorImage) {
+                visorReflection.style.backgroundImage = data.visorImage;
+                visorReflection.style.opacity = (data.astronautType === "image") ? '0.7' : '0.9'; // SVG reflections can be clearer
+            } else {
+                visorReflection.style.backgroundImage = 'none';
+            }
+            
+            // Reposition visor for SVGs if necessary (example, very crude)
+            if (data.astronautType === "svg") {
+                 if (data.astronautSvgId === "astronaut-10yrs") {
+                    visorReflection.style.left = "calc(5% + 60% * 0.40)"; // 5% viewport left + 60% SVG width * 0.4 (40% into SVG)
+                    visorReflection.style.top = "calc(100% - (100% * 0.60) * 0.80)"; // Bottom edge of viewport - (SVG height * 0.8 from its bottom)
+                    visorReflection.style.width = "calc(60% * 0.20)"; // 20% of SVG width
+                    visorReflection.style.height = "calc((100% * 0.60) * 0.15)"; // 15% of SVG height
+                } else if (data.astronautSvgId === "astronaut-100yrs") {
+                    visorReflection.style.left = "calc(5% + 60% * 0.38)";
+                    visorReflection.style.top = "calc(100% - (100% * 0.60) * 0.82)";
+                    visorReflection.style.width = "calc(60% * 0.24)";
+                    visorReflection.style.height = "calc((100% * 0.60) * 0.12)";
+                } else if (data.astronautSvgId === "astronaut-1000yrs") {
+                     visorReflection.style.backgroundImage = 'none'; // No traditional visor
+                }
+            } else { // Reset for original image
+                visorReflection.style.left = "200px"; 
+                visorReflection.style.top = "150px";
+                visorReflection.style.width = "80px";
+                visorReflection.style.height = "60px";
+            }
+
+
+            // Update timeline labels
+            labels.forEach(label => {
+                label.classList.remove('active');
+                if (label.dataset.value == index) {
+                    label.classList.add('active');
+                }
+            });
+
+            // Handle anomaly visibility
+            if (data.showAnomaly) {
+                anomalyElement.style.display = 'block';
+            } else {
+                anomalyElement.style.display = 'none';
+            }
+        }
+
+        slider.addEventListener('input', (event) => {
+            updateContent(event.target.value);
+        });
+
+        labels.forEach(label => {
+            label.addEventListener('click', (event) => {
+                const value = event.target.dataset.value;
+                slider.value = value;
+                updateContent(value);
+            });
+        });
+
+        // Anomaly click
+        anomalyElement.addEventListener('click', () => {
+            // Example messages for anomaly
+            const messages = [
+                "A faint signal... a pattern... We are not alone.",
+                "Echoes from a civilization that predates ours by eons.",
+                "The universe whispers its secrets. Are you listening?",
+                "They are watching. Or perhaps, they *were*.",
+                "Beyond this veil, realities intertwine."
+            ];
+            anomalyMessage.textContent = messages[Math.floor(Math.random() * messages.length)];
+            anomalyModal.style.display = 'flex';
+        });
+
+        // Modal close
+        closeModalButton.addEventListener('click', () => {
+            anomalyModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target == anomalyModal) {
+                anomalyModal.style.display = 'none';
+            }
+        });
+        
+        // Initial load
+        updateContent(0);
+
+        // Ensure original image path is correct - for the Base64, it's already set in src
+        // If you were using a file path:
+        // astronautImgElement.src = timelineData[0].astronautSrc; 
+        // And make sure to replace the long base64 string in the <img> tag with your actual image's base64 data.
+        // How to get Base64: Many online converters "image to base64". Or programmatically.
+
+    </script>
+</body>
+</html>

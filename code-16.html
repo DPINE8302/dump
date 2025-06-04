@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Earthquake & Tsunami Simulator</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        #main-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 300px; /* Slightly wider for more info */
+            padding: 20px;
+            background-color: #e9e9e9;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+            box-sizing: border-box;
+            z-index: 1000; /* Keep sidebar above map */
+        }
+
+        #sidebar h2 {
+            margin-top: 0;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+
+        #map-area {
+            flex-grow: 1;
+            position: relative; /* For Leaflet map to fill */
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            background-color: #add8e6; /* Light blue for water */
+        }
+
+        #impact-info h3 {
+            margin-bottom: 5px;
+        }
+        #impact-list {
+            list-style-type: none;
+            padding-left: 0;
+            font-size: 0.9em;
+        }
+        #impact-list li {
+            margin-bottom: 3px;
+            padding: 3px 5px;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+        }
+        #impact-list li.affected {
+            background-color: rgba(255, 100, 100, 0.4);
+            font-weight: bold;
+        }
+        #impact-list li.safe {
+            background-color: rgba(100, 255, 100, 0.2);
+        }
+        .leaflet-popup-content-wrapper {
+            font-size: 0.9em;
+        }
+        .epicenter-marker { /* Custom style for epicenter pulse */
+            background-color: rgba(255, 0, 0, 0.7);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            box-shadow: 0 0 10px red;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,0,0, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255,0,0, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(255,0,0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-container">
+        <div id="sidebar">
+            <h2>Simulation Controls</h2>
+            <div class="control-group">
+                <label for="magnitude-slider">Earthquake Magnitude: <span id="magnitude-value">7.0</span> M</label>
+                <input type="range" id="magnitude-slider" min="5.0" max="9.5" step="0.1" value="7.0">
+            </div>
+             <div class="control-group">
+                <label for="depth-slider">Hypocenter Depth: <span id="depth-value">20</span> km</label>
+                <input type="range" id="depth-slider" min="5" max="200" step="1" value="20">
+                <small>Shallow quakes ( &lt; 70km) are more likely to cause tsunamis if offshore.</small>
+            </div>
+
+            <div id="instructions">
+                <p><strong>Instructions:</strong>
+                    <ol>
+                        <li>Adjust magnitude and depth.</li>
+                        <li>Click on a sea area on the map to simulate an earthquake.</li>
+                    </ol>
+                </p>
+                <p><small><strong>Disclaimer:</strong> This is a simplified visual simulation. Impact scores are illustrative and NOT real casualty predictions.</small></p>
+            </div>
+
+            <div id="impact-info">
+                <h3>Illustrative City Impact:</h3>
+                <ul id="impact-list">
+                    <!-- Impact data will be populated here -->
+                </ul>
+            </div>
+        </div>
+
+        <div id="map-area">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        const magnitudeSlider = document.getElementById('magnitude-slider');
+        const magnitudeValueDisplay = document.getElementById('magnitude-value');
+        const depthSlider = document.getElementById('depth-slider');
+        const depthValueDisplay = document.getElementById('depth-value');
+        const impactList = document.getElementById('impact-list');
+
+        let map;
+        let currentEpicenterMarker = null;
+        let activeWaveLayers = [];
+        let cityMarkers = [];
+
+        // Southeast Asian Cities: { name, lat, lng, population (approx for weighting) }
+        const cities = [
+            { name: "Bangkok", lat: 13.7563, lng: 100.5018, population: 10700000 },
+            { name: "Ho Chi Minh City", lat: 10.8231, lng: 106.6297, population: 9000000 },
+            { name: "Singapore", lat: 1.3521, lng: 103.8198, population: 5900000 },
+            { name: "Jakarta", lat: -6.2088, lng: 106.8456, population: 10500000 },
+            { name: "Kuala Lumpur", lat: 3.1390, lng: 101.6869, population: 1800000 },
+            { name: "Manila", lat: 14.5995, lng: 120.9842, population: 13500000 },
+            { name: "Hong Kong", lat: 22.3193, lng: 114.1694, population: 7500000 },
+            { name: "Surabaya", lat: -7.2575, lng: 112.7521, population: 2870000 },
+            { name: "Phnom Penh", lat: 11.5564, lng: 104.9282, population: 2300000 },
+            { name: "Hanoi", lat: 21.0285, lng: 105.8542, population: 8000000 },
+            { name: "Yangon", lat: 16.8661, lng: 96.1951, population: 5400000 },
+            { name: "Taipei", lat: 25.0330, lng: 121.5654, population: 2600000 }, // Added
+            { name: "Chongqing", lat: 29.4316, lng: 106.9123, population: 32000000} // Added
+        ];
+
+        function initializeMap() {
+            map = L.map('map').setView([7, 110], 5); // Centered on SE Asia
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Add city markers
+            cities.forEach(city => {
+                const marker = L.marker([city.lat, city.lng])
+                    .addTo(map)
+                    .bindPopup(`<b>${city.name}</b><br>Pop: ${city.population.toLocaleString()}`);
+                cityMarkers.push({ ...city, marker: marker, listItem: null }); // Store marker and list item ref
+            });
+
+            map.on('click', handleMapClick);
+            populateInitialImpactList();
+        }
+
+        function populateInitialImpactList() {
+            impactList.innerHTML = ''; // Clear first
+            cityMarkers.forEach(city => {
+                const li = document.createElement('li');
+                li.textContent = `${city.name}: Awaiting simulation...`;
+                impactList.appendChild(li);
+                city.listItem = li; // Store reference
+            });
+        }
+
+        magnitudeSlider.addEventListener('input', (event) => {
+            magnitudeValueDisplay.textContent = parseFloat(event.target.value).toFixed(1);
+        });
+        depthSlider.addEventListener('input', (event) => {
+            depthValueDisplay.textContent = event.target.value;
+        });
+
+        function handleMapClick(e) {
+            const clickLatlng = e.latlng;
+            const magnitude = parseFloat(magnitudeSlider.value);
+            const depth = parseInt(depthSlider.value);
+
+            // Basic check if it's likely in the sea (very rough)
+            // For a real app, you'd use a land/sea mask or service
+            if (map.getZoom() > 6) { // More likely to be land if zoomed in a lot unless specifically on coast
+                 // Check if any city is very close to the click, might indicate land
+                const isNearCity = cities.some(city => clickLatlng.distanceTo(L.latLng(city.lat, city.lng)) < 20000); // 20km
+                if (isNearCity && depth > 10) { // Allow shallow coastal "land" clicks if it's a powerful quake
+                    // Allow if near a city, could be a coastal earthquake
+                } else if (depth > 30 && !isNearCity){ // Deeper "land" clicks less likely for surface waves
+                     // This very simple logic is not perfect
+                }
+            }
+
+
+            triggerEarthquake(clickLatlng, magnitude, depth);
+        }
+
+        function triggerEarthquake(epicenterLatlng, magnitude, depth) {
+            // Clear previous simulation elements
+            if (currentEpicenterMarker) {
+                map.removeLayer(currentEpicenterMarker);
+                currentEpicenterMarker = null;
+            }
+            activeWaveLayers.forEach(layer => map.removeLayer(layer));
+            activeWaveLayers = [];
+            resetImpactList();
+
+            // Create new epicenter marker (using a divIcon for custom pulsing CSS)
+            const epicenterIcon = L.divIcon({
+                className: 'epicenter-marker',
+                iconSize: [20, 20]
+            });
+            currentEpicenterMarker = L.marker(epicenterLatlng, { icon: epicenterIcon })
+                .addTo(map)
+                .bindPopup(`<b>Epicenter</b><br>Mag: ${magnitude.toFixed(1)}M, Depth: ${depth}km<br>Lat: ${epicenterLatlng.lat.toFixed(4)}, Lng: ${epicenterLatlng.lng.toFixed(4)}`)
+                .openPopup();
+
+            // Tsunami wave parameters
+            const waveCount = 5;
+            const waveInterval = 500; // ms between wave starts
+            // Max radius in meters. More magnitude, larger waves. Deeper quakes, slightly less surface effect.
+            const maxWaveRadiusMeters = (50000 * Math.pow(magnitude, 2.5)) / Math.max(1, Math.sqrt(depth/10));
+            const wavePropagationSpeed = 200 + (magnitude - 5) * 50; // m/s, very simplified
+            
+            const tsunamigenic = depth < 70; // Shallow quakes are more tsunamigenic
+
+            if (!tsunamigenic && magnitude < 7.5) { // Only show big waves for deep quakes if very strong
+                 cityMarkers.forEach(city => {
+                    city.listItem.textContent = `${city.name}: Low tsunami risk (deep quake).`;
+                    city.listItem.className = 'safe';
+                });
+                return; // No significant tsunami visualized for deep, moderate quakes
+            }
+
+
+            for (let i = 0; i < waveCount; i++) {
+                setTimeout(() => {
+                    if (currentEpicenterMarker) { // Check if a new simulation hasn't started
+                         createAndAnimateWave(epicenterLatlng, maxWaveRadiusMeters, wavePropagationSpeed, magnitude, depth);
+                    }
+                }, i * waveInterval);
+            }
+        }
+
+        function createAndAnimateWave(epicenterLatlng, maxRadius, speed, magnitude, depth) {
+            let currentRadius = 0;
+            const wave = L.circle(epicenterLatlng, {
+                radius: currentRadius,
+                color: 'dodgerblue',
+                weight: 2,
+                fillOpacity: 0.1 + (magnitude - 5) * 0.05 // More intense fill for stronger quakes
+            }).addTo(map);
+            activeWaveLayers.push(wave);
+
+            const startTime = performance.now();
+            const duration = maxRadius / speed * 1000; // ms for wave to reach maxRadius
+
+            function animateWave(timestamp) {
+                if (!activeWaveLayers.includes(wave)) return; // Wave was removed by new simulation
+
+                const elapsedTime = timestamp - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+                currentRadius = progress * maxRadius;
+
+                wave.setRadius(currentRadius);
+                wave.setStyle({ opacity: 0.8 * (1 - progress * 0.8) }); // Fade out as it expands
+
+                // Check for city impact
+                updateCityImpacts(epicenterLatlng, currentRadius, magnitude, depth);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateWave);
+                } else {
+                    if (map.hasLayer(wave)) map.removeLayer(wave);
+                    activeWaveLayers = activeWaveLayers.filter(w => w !== wave);
+                }
+            }
+            requestAnimationFrame(animateWave);
+        }
+        
+        function resetImpactList() {
+             cityMarkers.forEach(city => {
+                if (city.listItem) {
+                    city.listItem.textContent = `${city.name}: Simulating...`;
+                    city.listItem.className = '';
+                }
+            });
+        }
+
+        function updateCityImpacts(epicenterLatlng, currentWaveRadius, magnitude, depth) {
+            // Simplified impact calculation
+            // Higher magnitude = higher base impact
+            // Closer distance = higher impact
+            // Larger population = scales the score (but doesn't mean more % casualties necessarily)
+            // Shallower depth = more tsunamigenic potential
+
+            const magnitudeFactor = Math.pow(10, magnitude - 5); // Exponential impact of magnitude
+            const depthFactor = Math.max(0.1, 1 - (depth / 200)); // Deeper quakes have less surface effect for tsunamis
+
+            cityMarkers.forEach(city => {
+                const cityLatlng = L.latLng(city.lat, city.lng);
+                const distanceToEpicenter = epicenterLatlng.distanceTo(cityLatlng); // in meters
+
+                if (distanceToEpicenter <= currentWaveRadius) {
+                    // Wave has "reached" the city
+                    let impactScore = (magnitudeFactor * depthFactor * city.population) / (Math.pow(Math.max(distanceToEpicenter, 10000) / 10000, 2)); // distance in units of 10km, squared
+                    impactScore = Math.min(impactScore, city.population * 10); // Cap score to avoid absurd numbers
+                    impactScore = Math.floor(impactScore / 1000); // Scale down for readability
+
+                    if (impactScore > 0) {
+                        city.listItem.textContent = `${city.name}: Impact Score: ${impactScore.toLocaleString()}`;
+                        city.listItem.className = 'affected';
+                    } else if (city.listItem.className !== 'affected') { // Only update if not already heavily affected
+                        city.listItem.textContent = `${city.name}: Minor impact expected.`;
+                        city.listItem.className = 'safe';
+                    }
+                } else if (!city.listItem.className.includes('affected') && city.listItem.textContent.endsWith('...')) { // Only if not already affected and still "simulating"
+                     city.listItem.textContent = `${city.name}: Safe (wave not reached).`;
+                     city.listItem.className = 'safe';
+                }
+            });
+        }
+
+        // Initialize
+        initializeMap();
+    </script>
+</body>
+</html>

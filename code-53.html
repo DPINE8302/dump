@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirati Rattanaporn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg-main: #0b0b0b;
+            --color-text-main: #f0f0f0;
+            --color-text-nav: #cccccc;
+            --color-bg-terminal: #131315;
+            --color-terminal-border: #3A3A3A;
+            --color-terminal-prompt: #f0f0f0;
+            --syntax-command: #e4b363; /* Amber for commands and links */
+            --color-scrollbar-thumb: #4a4a4f;
+            --color-scrollbar-track: #252528;
+            
+            --wiki-bg: #ffffff;
+            --wiki-text: #202122;
+            --wiki-border: #a2a9b1;
+            --wiki-border-hover: #72777d;
+            --wiki-bg-hover: #f8f9fa;
+        }
+
+        html { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; box-sizing: border-box; }
+        *, *:before, *:after { box-sizing: inherit; }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background-color: var(--color-bg-main);
+            color: var(--color-text-main);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 16px;
+            padding: 2rem;
+        }
+
+        .page-header, .page-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            flex-shrink: 0;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        .page-header { margin-bottom: 1.5rem; }
+        .page-footer { margin-top: 1.5rem; }
+        
+        .page-header .name, .page-footer .role, .page-footer .time {
+            font-weight: 400;
+            font-size: 0.95rem;
+        }
+
+        .terminal-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            width: 100%;
+        }
+
+        .terminal-output-container::-webkit-scrollbar { width: 6px; }
+        .terminal-output-container::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
+        .terminal-output-container::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
+        .terminal-output-container::-webkit-scrollbar-thumb:hover { background: #5f5f66; }
+        .terminal-output-container { scrollbar-width: thin; scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track); }
+
+        .terminal-input {
+            background: transparent; border: none; outline: none;
+            color: inherit; width: 100%;
+            font-family: 'DM Mono', monospace;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        .blinking-cursor {
+            background-color: var(--color-text-main);
+            animation: blink 1s step-end infinite;
+            display: inline-block;
+            width: 0.5em;
+            height: 1em;
+            margin-left: 0.1em;
+            vertical-align: text-bottom;
+        }
+        @keyframes blink { from, to { opacity: 0; } 50% { opacity: 1; } }
+
+        .input-line .prompt { color: var(--color-terminal-prompt); }
+        .input-line .command-text { color: var(--syntax-command); }
+        .output-line {
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+        .output-line div { min-height: 1em; }
+        .output-link { color: var(--syntax-command); text-decoration: underline; }
+
+
+        .wikipedia-style-button {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--wiki-bg);
+            color: var(--wiki-text);
+            border: 1px solid var(--wiki-border);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .wikipedia-style-button:hover {
+            background-color: var(--wiki-bg-hover);
+            border-color: var(--wiki-border-hover);
+        }
+    </style>
+</head>
+<body class="text-sm md:text-base">
+    <header class="page-header">
+        <span class="name">Kirati Rattanaporn</span>
+    </header>
+
+    <div class="terminal-wrapper">
+        <div id="root" class="w-full h-full flex justify-center items-center"></div>
+    </div>
+
+    <footer class="page-footer">
+        <span class="role">technology and creative enthusiast</span>
+        <span class="time" id="clock"></span>
+    </footer>
+
+    <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="wikipedia-style-button">W</a>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PROMPT_SYMBOL_RAW = ">";
+        const PROMPT_SYMBOL_DISPLAY = `${PROMPT_SYMBOL_RAW} `; 
+        const TYPING_SPEED = 0; // Set to 0 for instant text, >0 for typing effect
+
+        // --- Command Outputs ---
+        const TARGET_HELP_OUTPUT = `Available commands:
+  help         - Show this help message
+  whoami       - Learn more about me
+  contact      - Get in touch
+  interests    - View my creative interests
+  achievements - See key achievements
+  projects     - Explore my projects and showcases
+  clear        - Clear the terminal screen`;
+
+        const aboutMeOutput = `Hello, I'm Win (Kirati Rattanaporn), a passionate technology and creative enthusiast from Bangkok, Thailand. Currently in Grade 10, I have a strong interest in technology, astronomy, photography, and film. Over the years, I have earned multiple awards in robotics, English contests, and athletics, showcasing my dedication in both academics and sports. My goal is to transfer to SPSM School to study multimedia and later pursue a degree at Chulalongkorn University's Faculty of Communication Arts.
+
+You can learn more about me on my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="output-link">Wikipedia page</a>.`;
+
+        const contactOutput = `Feel free to reach out to me through the following platforms:
+- Instagram: <a href="https://www.instagram.com/Win.rn" target="_blank" rel="noopener noreferrer" class="output-link">@Win.rn</a>
+- Photography Instagram: <a href="https://www.instagram.com/Win.albums" target="_blank" rel="noopener noreferrer" class="output-link">@Win.albums</a>
+- YouTube: <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" rel="noopener noreferrer" class="output-link">My Channel</a>
+- Wikipedia: <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="output-link">Biography</a>`;
+
+        const interestsOutput = `Creative Interests:
+- Filmmaking: Crafting stories and bringing visions to life through video.
+- Technology: Exploring new tech, coding, and building innovative projects like robotics.
+- Photography: Capturing moments, perspectives, and the beauty of the world.
+- Astronomy: Gazing at the cosmos and understanding our place in the universe.`;
+
+        const achievementsOutput = `Key Achievements:
+- Multiple national gold medals in Robotics (2022-2024)
+- Gold in Multi-Skills (EP Open House 2024)
+- Silver in Regional English Contest (2024)
+- Medals in Athletics (Sprints)
+
+For a detailed list, please see my <a href="https://en.wikipedia.org/wiki/Draft:Kirati_Rattanaporn" target="_blank" rel="noopener noreferrer" class="output-link">Wikipedia page</a>.`;
+        
+        const projectsOutput = `Projects & Showcases:
+- Feature Video Concept: <a href="https://www.youtube.com/embed/BMhot-xCYmk" target="_blank" rel="noopener noreferrer" class="output-link">Watch on YouTube</a>
+- ChannelFlix Gallery (Video Projects): <a href="https://www.youtube.com/channel/UCMQefq5ku1GHvTm50Ysixyg" target="_blank" rel="noopener noreferrer" class="output-link">View Channel</a>
+- Photography Showcase: <a href="https://www.instagram.com/Win.albums" target="_blank" rel="noopener noreferrer" class="output-link">@Win.albums on Instagram</a>`;
+
+
+        function Typewriter({ text, speed = TYPING_SPEED, onFinished, isHtml = false }) {
+            const [displayText, setDisplayText] = useState("");
+            useEffect(() => {
+                if (speed === 0 || !text) {
+                    setDisplayText(text || "");
+                    if (onFinished) onFinished();
+                    return;
+                }
+                let currentIdx = 0;
+                setDisplayText("");
+                const intervalId = setInterval(() => {
+                    if (currentIdx < text.length) {
+                        setDisplayText(prev => prev + text[currentIdx]);
+                        currentIdx++;
+                    } else {
+                        clearInterval(intervalId);
+                        if (onFinished) onFinished();
+                    }
+                }, speed);
+                return () => clearInterval(intervalId);
+            }, [text, speed, onFinished]);
+
+            const content = isHtml ? 
+                <div dangerouslySetInnerHTML={{ __html: displayText.replace(/\n/g, '<br/>') }} /> :
+                displayText.split('\n').map((line, i) => <div key={i}>{line || ' '}</div>);
+            
+            return <div className="output-line">{content}</div>;
+        }
+
+        function Terminal() {
+            const [history, setHistory] = useState([]); // Start with an empty history
+            const [inputValue, setInputValue] = useState("");
+            const [commandHistoryLog, setCommandHistoryLog] = useState([]);
+            const [commandHistoryIndex, setCommandHistoryIndex] = useState(-1);
+
+            const inputRef = useRef(null);
+            const scrollRef = useRef(null);
+
+            useEffect(() => { // Auto-scroll
+                if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }
+            }, [history]);
+
+            useEffect(() => { // Auto-focus input when not typing
+                const isTypingOutput = history.some(item => item.type === 'output' && item.isTyping);
+                if (!isTypingOutput) { inputRef.current?.focus(); }
+            }, [history]);
+
+            const handleInputChange = (e) => setInputValue(e.target.value);
+
+            const handleCommandSubmit = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const commandInput = inputValue.trim();
+                    // Allow processing even if input is empty for commands like 'clear' if needed,
+                    // but for now, require some input or handle specific empty commands
+                    if (commandInput === "" && history.length === 0) { // Special: type help if terminal is empty and enter is pressed
+                         processCommand("help", []);
+                         setCommandHistoryLog(prev => ["help", ...prev].slice(0, 20));
+                         setCommandHistoryIndex(-1);
+                         return;
+                    }
+                    if (commandInput === "") return;
+
+
+                    const newHistoryBase = [...history];
+                    newHistoryBase.push({ 
+                        id: Date.now(), 
+                        type: 'input', 
+                        content: `${PROMPT_SYMBOL_RAW}&nbsp;<span style="color: var(--syntax-command);">${commandInput.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`,
+                        isHtml: true
+                    });
+                    
+                    setInputValue("");
+                    setCommandHistoryLog(prev => [commandInput, ...prev].slice(0, 20));
+                    setCommandHistoryIndex(-1);
+                    
+                    processCommand(commandInput, newHistoryBase);
+                } else if (e.key === 'ArrowUp') { 
+                    e.preventDefault();
+                    if (commandHistoryLog.length > 0) {
+                        const newIndex = Math.min(commandHistoryIndex + 1, commandHistoryLog.length - 1);
+                        setCommandHistoryIndex(newIndex); setInputValue(commandHistoryLog[newIndex] || "");
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (commandHistoryIndex > -1) {
+                        const newIndex = Math.max(commandHistoryIndex - 1, -1);
+                        setCommandHistoryIndex(newIndex);
+                        setInputValue(newIndex === -1 ? "" : (commandHistoryLog[newIndex] || ""));
+                    }
+                }
+            };
+            
+            const addOutputToHistory = (outputContent, currentHist, isHtmlOutput = false) => {
+                const newHist = [...currentHist]; // currentHist already includes the input command
+                 newHist.push({
+                    id: Date.now() + Math.random(),
+                    type: 'output', content: outputContent, 
+                    isTyping: TYPING_SPEED > 0, 
+                    isHtml: isHtmlOutput
+                });
+                setHistory(newHist);
+            };
+
+            const processCommand = (commandInput, currentHist) => {
+                let outputContent = "";
+                let isHtmlOutput = false;
+                const [cmd] = commandInput.toLowerCase().split(/\s+/);
+
+                switch (cmd) {
+                    case 'help':
+                        outputContent = TARGET_HELP_OUTPUT;
+                        break;
+                    case 'whoami':
+                        outputContent = aboutMeOutput;
+                        isHtmlOutput = true;
+                        break;
+                    case 'contact':
+                        outputContent = contactOutput;
+                        isHtmlOutput = true;
+                        break;
+                    case 'interests':
+                        outputContent = interestsOutput;
+                        break;
+                    case 'achievements':
+                        outputContent = achievementsOutput;
+                        isHtmlOutput = true;
+                        break;
+                    case 'projects':
+                        outputContent = projectsOutput;
+                        isHtmlOutput = true;
+                        break;
+                    case 'clear':
+                        setHistory([]); 
+                        return; 
+                    default:
+                        outputContent = `Command not found: ${commandInput.split(" ")[0]}\nType 'help' for available commands.`;
+                }
+                addOutputToHistory(outputContent, currentHist, isHtmlOutput);
+            };
+
+            const handleTerminalClick = () => inputRef.current?.focus();
+            const onTypewriterFinish = (itemId) => {
+                setHistory(prevHistory => 
+                    prevHistory.map(item => 
+                        item.id === itemId ? { ...item, isTyping: false } : item
+                    )
+                );
+            };
+            
+            const isAnyOutputTyping = history.some(item => item.type === 'output' && item.isTyping);
+
+            return (
+                <div 
+                    className="w-full bg-[var(--color-bg-terminal)] 
+                               border border-[var(--color-terminal-border)] rounded 
+                               p-3 md:p-4 flex flex-col overflow-hidden cursor-text"
+                    style={{ maxWidth: '768px', height: '380px', fontSize: 'inherit' }} 
+                    onClick={handleTerminalClick}
+                >
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto terminal-output-container pr-1 space-y-0.5">
+                        {history.map(item => (
+                            <div key={item.id}>
+                                {item.type === 'input' ? (
+                                    item.isHtml ? 
+                                    <div className="input-line" style={{color: "var(--color-terminal-prompt)"}} dangerouslySetInnerHTML={{ __html: item.content }} />
+                                    : <div className="input-line" style={{color: "var(--color-terminal-prompt)"}}>{item.content}</div>
+                                ) : (
+                                    item.isTyping ? (
+                                        <Typewriter 
+                                            text={item.content} speed={TYPING_SPEED}
+                                            onFinished={() => onTypewriterFinish(item.id)}
+                                            isHtml={item.isHtml}
+                                        />
+                                    ) : (
+                                        <div className="output-line">
+                                        {item.isHtml ? 
+                                            <div dangerouslySetInnerHTML={{ __html: item.content.replace(/\n/g, '<br/>') }} />
+                                            : item.content.split('\n').map((line, i) => <div key={i}>{line || ' '}</div>)
+                                        }
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex items-center mt-1 shrink-0">
+                        <span className="mr-0.5" style={{color: "var(--color-terminal-prompt)"}}>{PROMPT_SYMBOL_DISPLAY}</span>
+                        <input
+                            ref={inputRef} type="text" value={inputValue}
+                            onChange={handleInputChange} onKeyDown={handleCommandSubmit}
+                            className="terminal-input flex-grow caret-[var(--color-text-main)]"
+                            disabled={isAnyOutputTyping}
+                            autoFocus spellCheck="false" autoComplete="off" aria-label="Terminal input"
+                        />
+                         {!isAnyOutputTyping && <span className="blinking-cursor"></span>}
+                    </div>
+                </div>
+            );
+        }
+
+        function updateClock() {
+            const clockElement = document.getElementById('clock');
+            if (clockElement) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/:/g,':');
+                clockElement.textContent = timeString;
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Terminal />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My ChannelFlix</title>
+    <style>
+        /* Basic Reset & Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #141414;
+            color: #fff;
+            line-height: 1.4;
+        }
+
+        a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px 50px;
+            background-color: transparent; /* Or a slight gradient */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            transition: background-color 0.3s ease;
+        }
+
+        .header.scrolled {
+            background-color: #141414; /* Solid black when scrolled */
+        }
+
+        .logo {
+            font-size: 2em;
+            font-weight: bold;
+            color: #e50914; /* Netflix red */
+        }
+
+        /* Main Content Area */
+        .main-content {
+            padding-top: 100px; /* Space for fixed header */
+        }
+
+        /* Video Row (Category) */
+        .category-row {
+            margin-bottom: 40px;
+            padding-left: 50px;
+        }
+
+        .category-title {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .video-carousel {
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden; /* Hide vertical scrollbar if it appears */
+            padding-bottom: 20px; /* Space for scrollbar without content overlap */
+        }
+
+        /* Custom scrollbar for webkit browsers */
+        .video-carousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        .video-carousel::-webkit-scrollbar-track {
+            background: #222;
+            border-radius: 4px;
+        }
+        .video-carousel::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+        .video-carousel::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+
+        /* Video Thumbnail */
+        .video-thumbnail {
+            flex: 0 0 auto; /* Prevent shrinking/growing */
+            width: 280px; /* Adjust as needed */
+            margin-right: 10px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            background-color: #222; /* Placeholder color */
+        }
+
+        .video-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        .video-thumbnail img {
+            width: 100%;
+            height: 157.5px; /* 16:9 aspect ratio for 280px width */
+            object-fit: cover;
+            display: block;
+        }
+
+        .video-info {
+            padding: 10px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-thumbnail:hover .video-info {
+            opacity: 1;
+        }
+
+        .video-title-thumb {
+            font-size: 1em;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Modal for Video Player */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #181818;
+            margin: auto;
+            padding: 0;
+            border: 1px solid #333;
+            width: 80%;
+            max-width: 900px;
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        
+        .video-player-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+        }
+
+        .video-player-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: -35px; /* Position above the modal content */
+            right: 0px;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 0.9em;
+            color: #777;
+            margin-top: 50px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo">ChannelFlix</div>
+        <!-- You can add nav items here if needed -->
+    </header>
+
+    <main class="main-content">
+        <!-- Video rows will be injected here by JavaScript -->
+        <div id="video-rows-container"></div>
+    </main>
+
+    <!-- The Modal -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button" id="closeModalButton">&times;</button>
+            <div id="youtubePlayerContainer" class="video-player-container">
+                <!-- YouTube iframe will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; <span id="currentYear"></span> Your Channel Name. All Rights Reserved.</p>
+        <p>Powered by YouTube</p>
+    </footer>
+
+    <script>
+        // --- DATA: Your YouTube Videos ---
+        // Replace these with your actual video details
+        // YouTube video ID is the part after "v=" in the URL (e.g., dQw4w9WgXcQ)
+        // Thumbnail: https://img.youtube.com/vi/YOUTUBE_VIDEO_ID/hqdefault.jpg (high quality)
+        //            https://img.youtube.com/vi/YOUTUBE_VIDEO_ID/mqdefault.jpg (medium quality)
+        //            https://img.youtube.com/vi/YOUTUBE_VIDEO_ID/sddefault.jpg (standard definition)
+        const videosData = [
+            {
+                id: "dQw4w9WgXcQ", // The one you provided
+                title: "Never Gonna Give You Up",
+                description: "The official video for Never Gonna Give You Up by Rick Astley.",
+                category: "Music Classics"
+            },
+            {
+                id: "VIDEO_ID_FROM_PROMPT", // This ID is for the video shown being edited, if it's on YouTube.
+                                        // If the video being edited in your screenshot is https://youtu.be/YOUR_ID_HERE
+                                        // then put YOUR_ID_HERE
+                title: "My School Project Intro",
+                description: "An awesome intro video for a school project.",
+                category: "School Projects"
+            },
+            {
+                id: "L_LUpnjgPso",
+                title: "Coffee Shop Radio",
+                description: "24/7 lofi hip hop beats, jazzhop, chillhop for study, sleep, work, relax.",
+                category: "Relax & Study"
+            },
+            {
+                id: "jfKfPfyJRdk",
+                title: "lofi hip hop radio - beats to relax/study to",
+                description: "Thank you for listening, I hope you will have a good time here",
+                category: "Relax & Study"
+            },
+            {
+                id: "5qap5aO4i9A",
+                title: "Learn HTML & CSS",
+                description: "Full Course for Beginners.",
+                category: "Tutorials"
+            },
+            {
+                id: "W6NZfCO5sik",
+                title: "JavaScript Programming",
+                description: "Full Course for Beginners.",
+                category: "Tutorials"
+            },
+            {
+                id: "mPzS9N7Xusc", // A travel vlog example
+                title: "Amazing Bali Travel Vlog",
+                description: "Exploring the beautiful island of Bali.",
+                category: "Travel Vlogs"
+            },
+             {
+                id: "VIDEO_ID_ANOTHER_ONE", // Placeholder for another video
+                title: "Another Awesome Video",
+                description: "Description for this video.",
+                category: "School Projects" // Example: Add more to the same category
+            }
+        ];
+
+        // --- DOM Elements ---
+        const videoRowsContainer = document.getElementById('video-rows-container');
+        const modal = document.getElementById('videoModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const youtubePlayerContainer = document.getElementById('youtubePlayerContainer');
+        const header = document.querySelector('.header');
+        const currentYearSpan = document.getElementById('currentYear');
+
+        // --- Functions ---
+
+        // Function to get thumbnail URL
+        function getThumbnailUrl(videoId, quality = 'hqdefault') {
+            // mqdefault, hqdefault, sddefault, maxresdefault
+            return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+        }
+        
+        // Function to generate video rows
+        function renderVideoRows() {
+            const categories = {};
+
+            // Group videos by category
+            videosData.forEach(video => {
+                if (video.id.startsWith("VIDEO_ID_")) return; // Skip placeholders if ID not replaced
+                if (!categories[video.category]) {
+                    categories[video.category] = [];
+                }
+                categories[video.category].push(video);
+            });
+
+            // Create HTML for each category
+            for (const categoryName in categories) {
+                const categoryRow = document.createElement('section');
+                categoryRow.classList.add('category-row');
+
+                const categoryTitle = document.createElement('h2');
+                categoryTitle.classList.add('category-title');
+                categoryTitle.textContent = categoryName;
+                categoryRow.appendChild(categoryTitle);
+
+                const videoCarousel = document.createElement('div');
+                videoCarousel.classList.add('video-carousel');
+
+                categories[categoryName].forEach(video => {
+                    const videoThumbnailDiv = document.createElement('div');
+                    videoThumbnailDiv.classList.add('video-thumbnail');
+                    videoThumbnailDiv.dataset.videoId = video.id; // Store video ID
+
+                    const img = document.createElement('img');
+                    img.src = getThumbnailUrl(video.id);
+                    img.alt = video.title;
+
+                    const videoInfoDiv = document.createElement('div');
+                    videoInfoDiv.classList.add('video-info');
+                    
+                    const videoTitleThumb = document.createElement('p');
+                    videoTitleThumb.classList.add('video-title-thumb');
+                    videoTitleThumb.textContent = video.title;
+
+                    videoInfoDiv.appendChild(videoTitleThumb);
+                    videoThumbnailDiv.appendChild(img);
+                    videoThumbnailDiv.appendChild(videoInfoDiv);
+                    videoCarousel.appendChild(videoThumbnailDiv);
+
+                    // Add click listener to open modal
+                    videoThumbnailDiv.addEventListener('click', () => {
+                        openModalWithVideo(video.id);
+                    });
+                });
+
+                categoryRow.appendChild(videoCarousel);
+                videoRowsContainer.appendChild(categoryRow);
+            }
+        }
+
+        // Function to open modal and play video
+        function openModalWithVideo(videoId) {
+            youtubePlayerContainer.innerHTML = ''; // Clear previous video
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+            iframe.setAttribute('frameborder', '0');
+            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+            iframe.setAttribute('allowfullscreen', '');
+            
+            youtubePlayerContainer.appendChild(iframe);
+            modal.style.display = 'flex'; // Use flex to center content
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        // Function to close modal
+        function closeModal() {
+            modal.style.display = 'none';
+            youtubePlayerContainer.innerHTML = ''; // Stop video by removing iframe
+            document.body.style.overflow = 'auto'; // Restore background scrolling
+        }
+        
+        // --- Event Listeners ---
+        closeModalButton.addEventListener('click', closeModal);
+
+        // Close modal if user clicks outside the modal content
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (event) => {
+            if (event.key === "Escape" && modal.style.display === 'flex') {
+                closeModal();
+            }
+        });
+        
+        // Change header background on scroll
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Set current year in footer
+        if (currentYearSpan) {
+            currentYearSpan.textContent = new Date().getFullYear();
+        }
+
+        // --- Initialize ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderVideoRows();
+        });
+
+    </script>
+</body>
+</html>

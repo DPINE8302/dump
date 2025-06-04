@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake & Tsunami Simulator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f0f0f0;
+            overflow: hidden; /* Prevent scrollbars from body */
+        }
+
+        #main-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 280px;
+            padding: 20px;
+            background-color: #e9e9e9;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        #sidebar h2 {
+            margin-top: 0;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+
+        #map-area {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333; /* Dark background for map contrast */
+            overflow: hidden; /* Important for containing map elements */
+            position: relative; /* For absolute positioning of map elements */
+        }
+
+        #map-container {
+            position: relative; /* Crucial for positioning elements on the map */
+            /* --- ADJUST THESE BASED ON YOUR IMAGE --- */
+            width: 800px;  /* Example width */
+            height: 600px; /* Example height */
+            /* --- ----------------------------- --- */
+            cursor: crosshair;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        #map-image {
+            display: block;
+            width: 100%;
+            height: 100%;
+            user-select: none; /* Prevent image selection */
+        }
+
+        .epicenter-marker {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%); /* Center on click */
+            pointer-events: none; /* So it doesn't interfere with map clicks */
+            z-index: 10;
+        }
+
+        .tsunami-wave {
+            position: absolute;
+            border: 2px solid dodgerblue;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0.8;
+            z-index: 5;
+            box-sizing: border-box; /* Ensure border is included in width/height */
+        }
+
+        .city-marker {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            transform: translate(-50%, -150%); /* Position text above the dot */
+            border: 1px solid #555;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .city-marker::before { /* The dot for the city */
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: white;
+            border: 1px solid black;
+            border-radius: 50%;
+            left: 50%;
+            top: calc(100% - 8px); /* Position below the text, adjust as needed */
+            transform: translateX(-50%);
+        }
+
+        #casualties-info h3 {
+            margin-bottom: 5px;
+        }
+        #casualties-list {
+            list-style-type: none;
+            padding-left: 0;
+            font-size: 0.9em;
+        }
+        #casualties-list li {
+            margin-bottom: 3px;
+            padding: 2px;
+            border-radius: 3px;
+        }
+        #casualties-list li.affected {
+            background-color: rgba(255, 100, 100, 0.3);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="main-container">
+        <div id="sidebar">
+            <h2>Simulation Controls</h2>
+            <div class="control-group">
+                <label for="magnitude-slider">Earthquake Magnitude: <span id="magnitude-value">7.0</span></label>
+                <input type="range" id="magnitude-slider" min="5.0" max="9.5" step="0.1" value="7.0">
+            </div>
+
+            <div id="instructions">
+                <p><strong>Instructions:</strong> Click on a sea area on the map to simulate an earthquake.</p>
+            </div>
+
+            <div id="casualties-info">
+                <h3>Casualty Estimates:</h3>
+                <ul id="casualties-list">
+                    <!-- Casualty data will be populated here -->
+                </ul>
+            </div>
+        </div>
+
+        <div id="map-area">
+            <div id="map-container">
+                <img id="map-image" src="map_se_asia.png" alt="Map of Southeast Asia">
+                <!-- Dynamic elements (epicenter, waves, cities) will be added here by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mapContainer = document.getElementById('map-container');
+        const mapImage = document.getElementById('map-image'); // Not strictly needed for clicks if on container
+        const magnitudeSlider = document.getElementById('magnitude-slider');
+        const magnitudeValueDisplay = document.getElementById('magnitude-value');
+        const casualtiesList = document.getElementById('casualties-list');
+
+        let currentEpicenterMarker = null;
+        let activeWaves = [];
+
+        // --- IMPORTANT: ADJUST THESE PIXEL COORDINATES FOR YOUR MAP IMAGE ---
+        // (x, y) are pixels from top-left of map_se_asia.png
+        // Population is a rough estimate for impact calculation
+        const cities = [
+            { name: "Bangkok", x: 410, y: 400, population: 10700000 },
+            { name: "Ho Chi Minh City", x: 480, y: 470, population: 9000000 },
+            { name: "Singapore", x: 440, y: 630, population: 5900000 },
+            { name: "Jakarta", x: 475, y: 800, population: 10500000 },
+            { name: "Kuala Lumpur", x: 405, y: 600, population: 1800000 },
+            { name: "Manila", x: 780, y: 390, population: 13500000 },
+            { name: "Hong Kong", x: 620, y: 180, population: 7500000 },
+            // Add more cities as needed
+            // Example: { name: "Chongqing", x: 350, y: 80, population: 32000000 }, (Adjust x,y for your map)
+        ];
+        // --- --------------------------------------------------------- ---
+
+        function initializeCities() {
+            cities.forEach(city => {
+                const marker = document.createElement('div');
+                marker.className = 'city-marker';
+                marker.textContent = city.name;
+                marker.style.left = `${city.x}px`;
+                marker.style.top = `${city.y}px`;
+                mapContainer.appendChild(marker);
+                city.element = marker; // Store for easy access later
+            });
+        }
+
+        magnitudeSlider.addEventListener('input', (event) => {
+            magnitudeValueDisplay.textContent = parseFloat(event.target.value).toFixed(1);
+        });
+
+        mapContainer.addEventListener('click', (event) => {
+            const rect = mapContainer.getBoundingClientRect();
+            // Calculate click relative to the map-container itself
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            
+            // Prevent clicks outside the actual image if map-container is larger
+            if (clickX < 0 || clickX > mapContainer.clientWidth || clickY < 0 || clickY > mapContainer.clientHeight) {
+                return;
+            }
+
+            const magnitude = parseFloat(magnitudeSlider.value);
+            triggerEarthquake(clickX, clickY, magnitude);
+        });
+
+        function triggerEarthquake(x, y, magnitude) {
+            // Clear previous simulation
+            if (currentEpicenterMarker) {
+                currentEpicenterMarker.remove();
+            }
+            activeWaves.forEach(wave => wave.remove());
+            activeWaves = [];
+            resetCasualties();
+
+            // Create new epicenter marker
+            currentEpicenterMarker = document.createElement('div');
+            currentEpicenterMarker.className = 'epicenter-marker';
+            currentEpicenterMarker.style.left = `${x}px`;
+            currentEpicenterMarker.style.top = `${y}px`;
+            mapContainer.appendChild(currentEpicenterMarker);
+
+            // Create tsunami waves
+            const numWaves = 5; // Number of concentric waves
+            const waveDelay = 400; //ms between each wave start
+            const maxWaveRadius = 200 + (magnitude - 5) * 80; // Larger magnitude = larger waves
+            const waveDuration = 3000 + (magnitude - 5) * 500; // ms
+
+            for (let i = 0; i < numWaves; i++) {
+                setTimeout(() => {
+                    createAndAnimateWave(x, y, maxWaveRadius, waveDuration);
+                }, i * waveDelay);
+            }
+            
+            calculateAndDisplayCasualties(x, y, magnitude, maxWaveRadius);
+        }
+
+        function createAndAnimateWave(epicenterX, epicenterY, maxRadius, duration) {
+            const wave = document.createElement('div');
+            wave.className = 'tsunami-wave';
+            wave.style.left = `${epicenterX}px`;
+            wave.style.top = `${epicenterY}px`;
+            wave.style.width = '0px';
+            wave.style.height = '0px';
+            mapContainer.appendChild(wave);
+            activeWaves.push(wave);
+
+            let startTime = null;
+
+            function animate(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = timestamp - startTime;
+                const fraction = progress / duration;
+
+                if (fraction < 1) {
+                    const currentRadius = fraction * maxRadius;
+                    wave.style.width = `${currentRadius * 2}px`;
+                    wave.style.height = `${currentRadius * 2}px`;
+                    wave.style.opacity = 0.8 * (1 - fraction); // Fade out
+                    requestAnimationFrame(animate);
+                } else {
+                    wave.remove();
+                    activeWaves = activeWaves.filter(w => w !== wave);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function resetCasualties() {
+            casualtiesList.innerHTML = ''; // Clear previous list
+             cities.forEach(city => {
+                if (city.listItem) { // if listItem was created
+                    city.listItem.classList.remove('affected');
+                    city.listItem.textContent = `${city.name}: Standing`;
+                } else { // Create if not exists
+                    const li = document.createElement('li');
+                    li.textContent = `${city.name}: Standing`;
+                    city.listItem = li; // Store for future updates
+                    casualtiesList.appendChild(li);
+                }
+            });
+        }
+        
+        function calculateAndDisplayCasualties(epicenterX, epicenterY, magnitude, maxWaveRadius) {
+            // This is a VERY simplified model.
+            const baseImpactFactor = 50; // Lower for less sensitivity
+            const magnitudeMultiplier = Math.pow(magnitude, 3); // Magnitude effect is exponential
+
+            cities.forEach(city => {
+                const distance = Math.sqrt(Math.pow(city.x - epicenterX, 2) + Math.pow(city.y - epicenterY, 2));
+                let estimatedCasualties = 0;
+                let affected = false;
+
+                if (distance < maxWaveRadius) { // Only consider cities within max wave reach
+                    // Inverse square law for distance, modified
+                    const distanceFactor = Math.max(0.1, distance) / 100; // Avoid division by zero, scale distance
+                    let impact = (magnitudeMultiplier / (distanceFactor * distanceFactor * baseImpactFactor));
+                    
+                    // Cap impact to avoid unrealistic numbers
+                    impact = Math.min(impact, city.population * 0.8); // Max 80% casualties for this demo
+
+                    // Ensure casualties are not negative and are integers
+                    estimatedCasualties = Math.max(0, Math.floor(impact));
+                    
+                    // If magnitude is low, even if close, casualties should be low
+                    if (magnitude < 6.0 && distance < 50) estimatedCasualties = Math.min(estimatedCasualties, city.population * 0.01);
+                    else if (magnitude < 7.0 && distance < 100) estimatedCasualties = Math.min(estimatedCasualties, city.population * 0.1);
+
+                    if (estimatedCasualties > 0) {
+                        affected = true;
+                    }
+                }
+                
+                // Update or create list item
+                if (!city.listItem) {
+                     const li = document.createElement('li');
+                     city.listItem = li;
+                     casualtiesList.appendChild(li);
+                }
+
+                city.listItem.textContent = `${city.name}: ${affected ? estimatedCasualties.toLocaleString() + ' casualties' : 'Safe'}`;
+                if (affected) {
+                    city.listItem.classList.add('affected');
+                } else {
+                    city.listItem.classList.remove('affected');
+                }
+            });
+        }
+
+        // Initial setup
+        initializeCities();
+        resetCasualties(); // Populate city list initially
+        magnitudeValueDisplay.textContent = parseFloat(magnitudeSlider.value).toFixed(1);
+
+        // Adjust map-area size if map-container has fixed size to center it better.
+        // This is a simple way if you know map-container's dimensions.
+        // For a responsive map, this logic would need to be more dynamic.
+        const mapArea = document.getElementById('map-area');
+        mapArea.style.padding = `max(0px, (${mapArea.clientHeight}px - ${mapContainer.style.height || mapContainer.clientHeight + 'px'}) / 2) max(0px, (${mapArea.clientWidth}px - ${mapContainer.style.width || mapContainer.clientWidth + 'px'}) / 2)`;
+
+    </script>
+</body>
+</html>
